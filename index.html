@@ -1,0 +1,1466 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Bela Vista — Controle de Qualidade</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f0f0f;--panel:#181818;--card:#1f1f1f;
+  --b1:#252525;--b2:#333;
+  --red:#c0392b;--red2:#e74c3c;
+  --grn:#27ae60;--grn2:#2ecc71;
+  --amb:#e67e22;--blu2:#3498db;
+  --wh:#efefef;--gy:#777;--gy2:#aaa;--gy3:#444;
+}
+body{background:var(--bg);color:var(--wh);font-family:'Segoe UI',Arial,sans-serif;font-size:14px}
+.hdr{background:#080808;border-bottom:3px solid var(--red);display:flex;align-items:center;justify-content:space-between;padding:0 22px;height:56px;position:sticky;top:0;z-index:200}
+.hdr-l{display:flex;align-items:center;gap:12px}
+.hdr-stripe{width:5px;height:34px;background:var(--red);border-radius:2px}
+.hdr-name{font-size:16px;font-weight:700;letter-spacing:.5px;color:#fff}
+.hdr-sub{font-size:10px;color:var(--gy);margin-top:1px}
+.hdr-r{display:flex;align-items:center;gap:10px}
+.hdr-date{font-size:11px;color:var(--gy3)}
+.btn-reset{background:transparent;border:1px solid var(--b2);color:var(--gy);border-radius:6px;padding:5px 11px;font-size:11px;cursor:pointer}
+.btn-reset:hover{color:#fff;border-color:var(--red)}
+.nav{background:#0c0c0c;border-bottom:1px solid var(--b1);display:flex;padding:0 18px}
+.nb{background:none;border:none;color:var(--gy);padding:11px 16px;cursor:pointer;font-size:13px;font-weight:500;border-bottom:3px solid transparent;margin-bottom:-1px;transition:all .18s;display:flex;align-items:center;gap:6px}
+.nb:hover{color:var(--gy2)} .nb.on{color:#fff;border-bottom-color:var(--red)}
+.page{display:none;padding:18px 22px} .page.on{display:block}
+.fbar{background:var(--panel);border:1px solid var(--b1);border-radius:9px;padding:13px 18px;display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin-bottom:16px}
+.ms-wrap{position:relative;min-width:200px}
+.ms-btn{background:var(--card);border:1px solid var(--b2);border-radius:7px;color:#fff;padding:8px 32px 8px 12px;font-size:13px;cursor:pointer;width:100%;text-align:left;position:relative;outline:none;transition:border .18s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ms-btn:focus,.ms-btn.open{border-color:var(--red)}
+.ms-btn::after{content:'▾';position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--gy);font-size:11px}
+.ms-dropdown{position:absolute;top:calc(100% + 4px);left:0;min-width:100%;background:#1a1a1a;border:1px solid var(--b2);border-radius:8px;z-index:1000;padding:6px 0;display:none;box-shadow:0 8px 24px rgba(0,0,0,.5);max-height:280px;overflow-y:auto}
+.ms-dropdown.open{display:block}
+.ms-item{display:flex;align-items:center;gap:9px;padding:7px 14px;cursor:pointer;font-size:13px;color:var(--gy2);transition:background .12s;white-space:nowrap}
+.ms-item:hover{background:rgba(255,255,255,.05)}
+.ms-item.selected{color:#fff}
+.ms-cb{width:14px;height:14px;border:1px solid var(--b2);border-radius:3px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:transparent;transition:all .12s}
+.ms-item.selected .ms-cb{background:var(--red);border-color:var(--red)}
+.ms-item.selected .ms-cb::after{content:'✓';font-size:10px;color:#fff;font-weight:700}
+.ms-sep{height:1px;background:var(--b1);margin:4px 0}
+.ms-all{color:var(--gy);font-size:11px}
+.fg{display:flex;flex-direction:column;gap:5px}
+.fl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--gy)}
+.fs{background:var(--card);border:1px solid var(--b2);border-radius:7px;color:#fff;padding:8px 12px;font-size:13px;cursor:pointer;outline:none;min-width:165px}
+.fs:focus{border-color:var(--red)}
+.fsep{width:1px;height:34px;background:var(--b1);align-self:center}
+.sbar{background:var(--panel);border:1px solid var(--b1);border-left:3px solid var(--red);border-radius:8px;padding:8px 16px;margin-bottom:15px;display:flex;gap:22px;align-items:center;font-size:12px;flex-wrap:wrap}
+.sbar em{color:var(--gy);font-style:normal;margin-right:5px} .sbar strong{color:var(--gy2);font-weight:600}
+.kpis{display:grid;grid-template-columns:repeat(7,1fr);gap:11px;margin-bottom:16px}
+.kpi{background:var(--card);border-radius:9px;padding:14px 16px;border-top:3px solid}
+.kpi.cb{border-top-color:var(--blu2)} .kpi.cg{border-top-color:var(--grn2)}
+.kpi.cr{border-top-color:var(--red2)} .kpi.ca{border-top-color:var(--amb)} .kpi.cs{border-top-color:var(--gy3)}
+.kl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--gy);margin-bottom:9px}
+.kv{font-size:26px;font-weight:700;line-height:1}
+.kpi.cb .kv{color:var(--blu2)} .kpi.cg .kv{color:var(--grn2)} .kpi.cr .kv{color:var(--red2)} .kpi.ca .kv{color:var(--amb)} .kpi.cs .kv{color:var(--gy2)}
+.ks{font-size:10px;color:var(--gy3);margin-top:5px}
+.sh{display:flex;align-items:center;gap:9px;margin:4px 0 11px}
+.sh::before{content:'';width:3px;height:15px;background:var(--red);border-radius:2px;flex-shrink:0}
+.st{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--gy2)}
+.cb2{background:var(--card);border:1px solid var(--b1);border-radius:9px;padding:14px 16px}
+.ch{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;padding-bottom:9px;border-bottom:1px solid var(--b1);flex-wrap:wrap;gap:8px}
+.ct{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--gy2)}
+.leg{display:flex;flex-wrap:wrap;gap:12px;font-size:11px;color:var(--gy)}
+.li{display:flex;align-items:center;gap:5px}
+.ls{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.cw{position:relative}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-bottom:13px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:13px;margin-bottom:13px}
+.mb{margin-bottom:13px}
+.fc{background:var(--card);border:1px solid var(--b1);border-radius:9px;padding:20px 22px}
+.ftit{font-size:14px;font-weight:700;color:#fff;margin-bottom:4px;display:flex;align-items:center;gap:9px}
+.ftit::before{content:'';width:4px;height:19px;background:var(--red);border-radius:2px}
+.fsub{font-size:11px;color:var(--gy);margin-bottom:18px;padding-left:13px}
+.fg2{display:grid;grid-template-columns:repeat(4,1fr);gap:13px}
+.fg2 .fg{display:flex;flex-direction:column;gap:5px}
+.fg2 .fg.s2{grid-column:span 2}
+.finl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gy)}
+.finl span{color:var(--red);margin-left:2px}
+.fi,.fsel{background:#121212;border:1px solid var(--b2);border-radius:7px;color:#fff;padding:8px 11px;font-size:13px;outline:none;width:100%}
+.fi:focus,.fsel:focus{border-color:var(--red);box-shadow:0 0 0 2px rgba(192,57,43,.18)}
+.fi::placeholder{color:var(--gy3)} .fsel option{background:#121212}
+.prev{background:#121212;border:1px solid var(--b2);border-radius:7px;padding:9px 12px;font-size:13px;color:var(--gy3);min-height:40px;display:flex;align-items:center}
+.frow{display:flex;gap:10px;align-items:center;margin-top:17px;padding-top:17px;border-top:1px solid var(--b1)}
+.bsave{background:var(--red);color:#fff;border:none;border-radius:7px;padding:9px 22px;font-size:13px;font-weight:700;cursor:pointer}
+.bsave:hover{background:#a93226}
+.bclear{background:transparent;color:var(--gy);border:1px solid var(--b2);border-radius:7px;padding:9px 16px;font-size:13px;cursor:pointer}
+.bclear:hover{color:#fff;border-color:var(--gy3)}
+.msg{font-size:12px;padding:6px 13px;border-radius:6px;display:none}
+.msg.ok{display:inline-flex;background:rgba(39,174,96,.12);color:var(--grn2);border:1px solid rgba(39,174,96,.28)}
+.msg.er{display:inline-flex;background:rgba(192,57,43,.12);color:var(--red2);border:1px solid rgba(192,57,43,.28)}
+.tbar{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:12px}
+.tbox{background:var(--card);border:1px solid var(--b1);border-radius:9px;overflow:hidden}
+.thd{padding:11px 15px;border-bottom:1px solid var(--b1);display:flex;justify-content:space-between;align-items:center}
+.thtit{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--gy2)}
+.tcnt{font-size:11px;color:var(--gy3)}
+.tw{overflow-x:auto;overflow-y:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{background:#111;padding:8px 13px;text-align:left;color:var(--gy);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;position:sticky;top:0;z-index:1;white-space:nowrap}
+tbody td{padding:7px 13px;border-bottom:1px solid #161616;color:var(--gy2);white-space:nowrap}
+tbody tr:hover td{background:rgba(255,255,255,.018)}
+.bv{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;border:1px solid}
+.bvok{background:rgba(39,174,96,.1);color:var(--grn2);border-color:rgba(39,174,96,.28)}
+.bver{background:rgba(192,57,43,.1);color:var(--red2);border-color:rgba(192,57,43,.28)}
+.bvlow{background:rgba(230,126,34,.1);color:var(--amb);border-color:rgba(230,126,34,.28)}
+.vok{color:var(--grn2);font-weight:700} .ver{color:var(--red2);font-weight:700} .vlow{color:var(--amb);font-weight:700}
+/* ── SYNC PANEL ── */
+.sync-panel{background:linear-gradient(135deg,#1a1a1a,#1f1a0f);border:1px solid #3a3010;border-radius:10px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.sync-icon{font-size:24px;flex-shrink:0}
+.sync-info{flex:1;min-width:200px}
+.sync-title{font-size:12px;font-weight:700;color:#f0c040;text-transform:uppercase;letter-spacing:.6px;margin-bottom:3px}
+.sync-desc{font-size:11px;color:var(--gy);line-height:1.5}
+.sync-stats{font-size:11px;color:var(--gy3);margin-top:4px}
+.sync-stats strong{color:var(--gy2)}
+.btn-sync{background:#c0392b;color:#fff;border:none;border-radius:7px;padding:9px 18px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:background .18s;display:flex;align-items:center;gap:7px;flex-shrink:0}
+.btn-sync:hover{background:#a93226}
+.btn-sync svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.sync-msg{font-size:12px;padding:6px 13px;border-radius:6px;margin-top:8px;display:none;width:100%}
+.sync-msg.ok{display:block;background:rgba(39,174,96,.12);color:var(--grn2);border:1px solid rgba(39,174,96,.28)}
+.sync-msg.er{display:block;background:rgba(192,57,43,.12);color:var(--red2);border:1px solid rgba(192,57,43,.28)}
+.sync-msg.inf{display:block;background:rgba(52,152,219,.12);color:#5dade2;border:1px solid rgba(52,152,219,.28)}
+#syncFileInput{display:none}
+.bcsv{background:transparent;border:1px solid var(--b2);color:var(--gy);border-radius:7px;padding:7px 13px;font-size:12px;cursor:pointer}
+.bcsv:hover{color:#fff;border-color:var(--gy3)}
+/* ── MODAL DE SENHA ── */
+.pwd-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:6000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(3px)}
+.pwd-box{background:#1a1a1a;border:1px solid #333;border-radius:12px;padding:30px 32px;width:340px;box-shadow:0 20px 60px rgba(0,0,0,.7)}
+.pwd-icon{font-size:28px;text-align:center;margin-bottom:12px}
+.pwd-title{font-size:15px;font-weight:700;color:#fff;text-align:center;margin-bottom:6px}
+.pwd-sub{font-size:12px;color:var(--gy);text-align:center;margin-bottom:20px;line-height:1.5}
+.pwd-input-wrap{position:relative;margin-bottom:10px}
+.pwd-input{width:100%;background:#111;border:1px solid var(--b2);border-radius:7px;color:#fff;padding:10px 42px 10px 14px;font-size:15px;outline:none;letter-spacing:3px;transition:border .2s}
+.pwd-input:focus{border-color:var(--red);box-shadow:0 0 0 2px rgba(192,57,43,.2)}
+.pwd-toggle{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--gy);cursor:pointer;font-size:16px;padding:2px}
+.pwd-toggle:hover{color:var(--lgray)}
+.pwd-err{font-size:12px;color:var(--red2);text-align:center;margin-bottom:14px;min-height:18px}
+.pwd-actions{display:flex;gap:10px}
+.pwd-btn-ok{flex:1;background:var(--red);color:#fff;border:none;border-radius:7px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;transition:background .2s}
+.pwd-btn-ok:hover{background:#a93226}
+.pwd-btn-cancel{background:transparent;color:var(--gy);border:1px solid var(--b2);border-radius:7px;padding:10px 16px;font-size:13px;cursor:pointer}
+.pwd-btn-cancel:hover{color:#fff;border-color:var(--gy3)}
+.btn-del{background:transparent;border:none;color:var(--gy3);cursor:pointer;font-size:14px;padding:2px 7px;border-radius:4px;transition:all .15s;line-height:1}
+.btn-del:hover{color:var(--red2);background:rgba(231,76,60,.1)}
+/* Modal de confirmação */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:5000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px)}
+.modal-box{background:#1a1a1a;border:1px solid var(--b2);border-radius:12px;padding:28px 32px;max-width:440px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.modal-icon{font-size:28px;margin-bottom:14px;text-align:center}
+.modal-title{font-size:15px;font-weight:700;color:#fff;margin-bottom:8px;text-align:center}
+.modal-desc{font-size:13px;color:var(--gy2);margin-bottom:6px;text-align:center;line-height:1.6}
+.modal-detail{background:#111;border:1px solid var(--b1);border-radius:7px;padding:10px 14px;font-size:12px;color:var(--gy);margin:12px 0 20px;line-height:1.7}
+.modal-detail strong{color:var(--gy2)}
+.modal-actions{display:flex;gap:10px;justify-content:center}
+.btn-confirm-del{background:var(--red);color:#fff;border:none;border-radius:7px;padding:9px 24px;font-size:13px;font-weight:700;cursor:pointer;transition:background .18s}
+.btn-confirm-del:hover{background:#a93226}
+.btn-cancel-del{background:transparent;color:var(--gy);border:1px solid var(--b2);border-radius:7px;padding:9px 20px;font-size:13px;cursor:pointer}
+.btn-cancel-del:hover{color:#fff;border-color:var(--gy3)}
+.sessbox{background:var(--card);border:1px solid var(--b1);border-radius:9px;overflow:hidden;margin-top:16px}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.online-badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;padding:3px 9px;border-radius:20px;background:rgba(39,174,96,.15);color:var(--grn2);border:1px solid rgba(39,174,96,.25)}
+.offline-badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;padding:3px 9px;border-radius:20px;background:rgba(128,128,128,.15);color:var(--gy);border:1px solid rgba(128,128,128,.2)}
+.ft{background:#060606;border-top:1px solid var(--b1);padding:9px 22px;font-size:10px;color:var(--gy3);text-align:center}
+@media(max-width:1100px){.kpis{grid-template-columns:repeat(4,1fr)}.kpis.k6{grid-template-columns:repeat(3,1fr)}.g3{grid-template-columns:1fr 1fr}}
+@media(max-width:750px){.kpis{grid-template-columns:1fr 1fr}.g2,.g3{grid-template-columns:1fr}.fg2{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){.kpis{grid-template-columns:1fr}.fg2{grid-template-columns:1fr}.fg2 .fg.s2{grid-column:span 1}}
+
+/* ── IMPORT PANEL ── */
+.import-panel{background:var(--panel);border:1px solid var(--b1);border-radius:9px;padding:20px 22px;margin-bottom:16px}
+.import-title{font-size:13px;font-weight:700;color:#fff;margin-bottom:4px;display:flex;align-items:center;gap:9px}
+.import-title::before{content:'';width:4px;height:18px;background:var(--blu2);border-radius:2px}
+.import-sub{font-size:11px;color:var(--gy);margin-bottom:16px;padding-left:13px}
+.drop-zone{border:2px dashed var(--b2);border-radius:9px;padding:32px 20px;text-align:center;cursor:pointer;transition:all .2s;background:#111}
+.drop-zone:hover,.drop-zone.over{border-color:var(--blu2);background:rgba(52,152,219,.06)}
+.drop-icon{font-size:32px;margin-bottom:10px;color:var(--gy3)}
+.drop-text{font-size:13px;color:var(--gy);margin-bottom:6px}
+.drop-hint{font-size:11px;color:var(--gy3)}
+.drop-btn{background:var(--blu2);color:#fff;border:none;border-radius:7px;padding:8px 20px;font-size:12px;font-weight:700;cursor:pointer;margin-top:12px;transition:background .2s}
+.drop-btn:hover{background:#2980b9}
+#fileInput{display:none}
+.import-preview{margin-top:16px;display:none}
+.import-preview-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.import-preview-title{font-size:11px;font-weight:700;color:var(--gy2);text-transform:uppercase;letter-spacing:.5px}
+.import-preview-info{font-size:11px;color:var(--gy)}
+.preview-tbl-wrap{overflow-x:auto;max-height:260px;overflow-y:auto;border:1px solid var(--b1);border-radius:7px}
+.map-section{margin-top:16px;display:none}
+.map-title{font-size:11px;font-weight:700;color:var(--gy2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+.map-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.map-row{display:flex;flex-direction:column;gap:5px}
+.map-lbl{font-size:10px;color:var(--gy);font-weight:600}
+.map-lbl span{color:var(--red);margin-left:2px}
+.import-actions{display:flex;gap:10px;align-items:center;margin-top:14px;padding-top:14px;border-top:1px solid var(--b1)}
+.btn-import{background:var(--grn);color:#fff;border:none;border-radius:7px;padding:9px 22px;font-size:13px;font-weight:700;cursor:pointer}
+.btn-import:hover{background:#219a52}
+.btn-cancel-import{background:transparent;color:var(--gy);border:1px solid var(--b2);border-radius:7px;padding:9px 16px;font-size:13px;cursor:pointer}
+.btn-cancel-import:hover{color:#fff}
+.import-msg{font-size:12px;padding:6px 13px;border-radius:6px;display:none}
+.import-msg.ok{display:inline-flex;background:rgba(39,174,96,.12);color:var(--grn2);border:1px solid rgba(39,174,96,.28)}
+.import-msg.er{display:inline-flex;background:rgba(192,57,43,.12);color:var(--red2);border:1px solid rgba(192,57,43,.28)}
+/* ── BATCH INPUT TABLE ── */
+.batch-panel{background:var(--panel);border:1px solid var(--b1);border-radius:9px;padding:20px 22px}
+.batch-title{font-size:13px;font-weight:700;color:#fff;margin-bottom:4px;display:flex;align-items:center;gap:9px}
+.batch-title::before{content:'';width:4px;height:18px;background:var(--amb);border-radius:2px}
+.batch-sub{font-size:11px;color:var(--gy);margin-bottom:16px;padding-left:13px}
+.batch-tbl-wrap{overflow-x:auto;margin-bottom:12px}
+.batch-tbl{width:100%;border-collapse:collapse;font-size:12px;min-width:780px}
+.batch-tbl thead th{background:#111;padding:7px 10px;text-align:left;color:var(--gy);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
+.batch-tbl tbody td{padding:4px 4px;border-bottom:1px solid #161616;vertical-align:middle}
+.batch-tbl .bi{background:#121212;border:1px solid var(--b2);border-radius:5px;color:#fff;padding:6px 8px;font-size:12px;width:100%;outline:none}
+.batch-tbl .bi:focus{border-color:var(--red)}
+.batch-tbl .bsel{background:#121212;border:1px solid var(--b2);border-radius:5px;color:#fff;padding:6px 6px;font-size:12px;width:100%;outline:none}
+.batch-tbl .bsel:focus{border-color:var(--red)}
+.batch-tbl .status-cell{text-align:center;font-size:11px;font-weight:700;min-width:80px}
+.batch-tbl .row-del{background:transparent;border:none;color:var(--gy3);cursor:pointer;font-size:16px;padding:2px 6px}
+.batch-tbl .row-del:hover{color:var(--red2)}
+.batch-bottom{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.btn-add-row{background:transparent;border:1px dashed var(--b2);color:var(--gy);border-radius:7px;padding:7px 16px;font-size:12px;cursor:pointer;transition:all .2s}
+.btn-add-row:hover{color:#fff;border-color:var(--gy2)}
+.btn-save-batch{background:var(--red);color:#fff;border:none;border-radius:7px;padding:9px 22px;font-size:13px;font-weight:700;cursor:pointer}
+.btn-save-batch:hover{background:#a93226}
+.batch-msg{font-size:12px;padding:6px 13px;border-radius:6px;display:none}
+.batch-msg.ok{display:inline-flex;background:rgba(39,174,96,.12);color:var(--grn2);border:1px solid rgba(39,174,96,.28)}
+.batch-msg.er{display:inline-flex;background:rgba(192,57,43,.12);color:var(--red2);border:1px solid rgba(192,57,43,.28)}
+/* TABS dentro da página form */
+.form-tabs{display:flex;gap:0;border-bottom:1px solid var(--b1);margin-bottom:18px}
+.ftab{background:none;border:none;color:var(--gy);padding:10px 18px;cursor:pointer;font-size:13px;font-weight:500;border-bottom:3px solid transparent;margin-bottom:-1px;transition:all .18s}
+.ftab:hover{color:var(--gy2)} .ftab.on{color:#fff;border-bottom-color:var(--amb)}
+.ftab-page{display:none} .ftab-page.on{display:block}
+
+</style>
+</head>
+<body>
+<header class="hdr">
+  <div class="hdr-l">
+    <div class="hdr-stripe"></div>
+    <div><div class="hdr-name">ARGAMASSA BELA VISTA</div><div class="hdr-sub">CONTROLE DE QUALIDADE — ENSAIOS DE RESISTÊNCIA À COMPRESSÃO (MPa)</div></div>
+  </div>
+  <div class="hdr-r">
+    <div id="sbStatus" style="font-size:10px;color:var(--gy3);display:none;align-items:center;gap:6px">
+      <span style="width:8px;height:8px;background:var(--amb);border-radius:50%;display:inline-block;animation:pulse 1s infinite"></span>
+      <span id="sbStatusTxt">Carregando...</span>
+    </div>
+    <div class="hdr-date" id="hDate"></div>
+    <button class="btn-reset" onclick="resetData()">⟳ Restaurar dados</button>
+  </div>
+</header>
+<nav class="nav">
+  <button class="nb on" onclick="setPage('dash',this)">&#9632; Dashboard</button>
+  <button class="nb" onclick="setPage('form',this)">&#43; Inserir Ensaio</button>
+  <button class="nb" onclick="setPage('dados',this)">&#9776; Base de Dados</button>
+</nav>
+
+<!-- DASHBOARD -->
+<div class="page on" id="page-dash">
+  <!-- Painel de sincronização com a planilha -->
+  <div class="sync-panel">
+    <div class="sync-icon">📊</div>
+    <div class="sync-info">
+      <div class="sync-title">Sincronizar com planilha F 6.1-3</div>
+      <div class="sync-desc">Arraste o arquivo <strong style="color:#f0c040">F_6_1-3_ENSAIO_DE_PRODUTO_ACABADO_-_2026.xlsm</strong> aqui ou clique no botão para atualizar o dashboard com os dados mais recentes.</div>
+      <div class="sync-stats" id="syncStats">Última sincronização: <strong>nenhuma</strong></div>
+      <div class="sync-msg" id="syncMsg"></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;flex-shrink:0">
+      <button class="btn-sync" onclick="pwdAsk('sync',null,'Sincronizar planilha','Digite a senha para carregar dados da planilha')">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Carregar planilha
+      </button>
+    </div>
+    <input type="file" id="syncFileInput" accept=".xlsm,.xlsx,.xls" onchange="onSyncFile(event)">
+  </div>
+  <div class="fbar" id="dashFbar" ondragover="onSyncDrag(event)" ondragleave="onSyncDragLeave(event)" ondrop="onSyncDrop(event)">
+    <div class="fg"><div class="fl">Produto</div><select class="fs" id="sProd" onchange="render()"></select></div>
+    <div class="fsep"></div>
+    <div class="fg">
+      <div class="fl">Meses</div>
+      <div class="ms-wrap" id="mesMsWrap">
+        <button class="ms-btn" id="mesMsBtn" onclick="toggleMs(event,'mesMsDropdown','mesMsBtn')">Todos os meses</button>
+        <div class="ms-dropdown" id="mesMsDropdown">
+          <div class="ms-item ms-all" onclick="selectAllMs()"><div class="ms-cb" id="msAllCb" style="background:var(--red);border-color:var(--red)"><span style="color:#fff;font-size:10px;font-weight:700">✓</span></div>Todos os meses</div>
+          <div class="ms-sep"></div>
+          <div id="msMesList"></div>
+        </div>
+      </div>
+    </div>
+    <div class="fsep"></div>
+    <div class="fg">
+      <div class="fl">Ano</div>
+      <select class="fs" id="sAno" onchange="onAnoChange()" style="min-width:110px"></select>
+    </div>
+  </div>
+  <div class="sbar" id="specBar" style="display:none">
+    <div><em>Produto:</em><strong id="spProd">—</strong></div>
+    <div><em>Lim. Mín.:</em><strong id="spMin" style="color:var(--grn2)">—</strong></div>
+    <div><em>Lim. Máx.:</em><strong id="spMax" style="color:var(--red2)">—</strong></div>
+    <div style="margin-left:auto;font-size:11px;color:var(--gy3)" id="spCnt"></div>
+  </div>
+  <div class="kpis">
+    <div class="kpi cb"><div class="kl">Total Ensaios</div><div class="kv" id="kN">—</div><div class="ks">registros</div></div>
+    <div class="kpi cg"><div class="kl">Aprovados</div><div class="kv" id="kA">—</div><div class="ks">dentro da spec</div></div>
+    <div class="kpi ca"><div class="kl">Rep. Abaixo do Mín</div><div class="kv" id="kRL">—</div><div class="ks">resistência insuficiente</div></div>
+    <div class="kpi cr"><div class="kl">Rep. Acima do Máx</div><div class="kv" id="kRH">—</div><div class="ks">acima da especificação</div></div>
+    <div class="kpi ca" style="border-top-color:var(--blu2)"><div class="kl">% Aprovação</div><div class="kv" id="kP" style="color:var(--blu2)">—</div><div class="ks">taxa de conformidade</div></div>
+    <div class="kpi cs"><div class="kl">Média Geral</div><div class="kv" id="kM">—</div><div class="ks">MPa</div></div>
+    <div class="kpi cr" style="border-top-color:#9b59b6"><div class="kl">% Fora da Spec</div><div class="kv" id="kFora" style="color:#a569bd">—</div><div class="ks">acima + abaixo</div></div>
+  </div>
+  <div class="sh"><div class="st">Variação ponto a ponto por lote</div></div>
+  <div class="cb2 mb">
+    <div class="ch">
+      <div class="ct">Resultado por lote — cronológico</div>
+      <div class="leg">
+        <div class="li"><div class="ls" style="background:#e74c3c"></div>Resultado</div>
+        <div class="li"><div class="ls" style="background:#27ae60;opacity:.65"></div>Lim. Mín.</div>
+        <div class="li"><div class="ls" style="background:#c0392b;opacity:.65"></div>Lim. Máx.</div>
+        <div class="li"><div class="ls" style="background:#2ecc71;border-radius:50%"></div>Aprovado</div>
+        <div class="li"><div class="ls" style="background:#e67e22;border-radius:50%"></div>Rep. Abaixo do Mín</div>
+        <div class="li"><div class="ls" style="background:#e74c3c;border-radius:50%"></div>Rep. Acima do Máx</div>
+      </div>
+    </div>
+    <div class="cw" style="height:240px"><canvas id="cLt"></canvas></div>
+  </div>
+  <div class="sh"><div class="st">Análise mensal</div></div>
+  <div class="g3">
+    <div class="cb2"><div class="ch"><div class="ct">% Aprovação / Mês</div></div><div class="cw" style="height:195px"><canvas id="cAp"></canvas></div></div>
+    <div class="cb2">
+      <div class="ch">
+        <div class="ct">Média de Resistência (MPa)</div>
+        <div class="leg"><div class="li"><div class="ls" style="background:#e74c3c"></div>Média</div><div class="li"><div class="ls" style="background:#27ae60;opacity:.55"></div>Min</div><div class="li"><div class="ls" style="background:#c0392b;opacity:.55"></div>Máx</div></div>
+      </div>
+      <div class="cw" style="height:175px"><canvas id="cMd"></canvas></div>
+    </div>
+    <div class="cb2">
+      <div class="ch">
+        <div class="ct">Aprovados × Reprovados</div>
+        <div class="leg"><div class="li"><div class="ls" style="background:#27ae60"></div>Aprov.</div><div class="li"><div class="ls" style="background:#e74c3c"></div>Reprov.</div></div>
+      </div>
+      <div class="cw" style="height:175px"><canvas id="cSt"></canvas></div>
+    </div>
+  </div>
+  <div class="g2">
+    <div class="cb2"><div class="ch"><div class="ct">Conformidade Geral</div></div><div class="cw" style="height:200px"><canvas id="cPi"></canvas></div></div>
+    <div class="cb2"><div class="ch"><div class="ct">% Aprovação Acumulada</div></div><div class="cw" style="height:200px"><canvas id="cAc"></canvas></div></div>
+  </div>
+
+  <div class="sh"><div class="st">Distribuição mensal — Valores fora da especificação</div></div>
+  <div class="cb2 mb">
+    <div class="ch">
+      <div class="ct">% Acima · % Abaixo · % Aprovado por mês (empilhado 100%)</div>
+      <div class="leg">
+        <div class="li"><div class="ls" style="background:#e74c3c"></div>% Acima do Máx</div>
+        <div class="li"><div class="ls" style="background:#e67e22"></div>% Abaixo do Mín</div>
+        <div class="li"><div class="ls" style="background:#27ae60"></div>% Aprovado</div>
+      </div>
+    </div>
+    <div class="cw" style="height:220px"><canvas id="cFora"></canvas></div>
+  </div>
+</div>
+
+<!-- INSERIR ENSAIO -->
+<div class="page" id="page-form">
+  <div class="form-tabs">
+    <button class="ftab on" onclick="setFTab('import',this)">&#11015; Importar Excel / CSV</button>
+    <button class="ftab" onclick="setFTab('batch',this)">&#9776; Tabela rápida</button>
+    <button class="ftab" onclick="setFTab('single',this)">&#43; Registro único</button>
+  </div>
+
+  <!-- TAB 1: IMPORTAR -->
+  <div class="ftab-page on" id="ftab-import">
+    <div class="import-panel">
+      <div class="import-title">Importar planilha de ensaios</div>
+      <div class="import-sub">Arraste um arquivo Excel (.xlsx, .xls) ou CSV diretamente — os dados são lidos no navegador, sem enviar para nenhum servidor.</div>
+      <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+        <div class="drop-icon">📂</div>
+        <div class="drop-text">Arraste o arquivo aqui ou clique para selecionar</div>
+        <div class="drop-hint">Aceita .xlsx, .xls e .csv</div>
+        <button class="drop-btn" onclick="event.stopPropagation();document.getElementById('fileInput').click()">Selecionar arquivo</button>
+      </div>
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="onFileSelect(event)">
+
+      <!-- Mapeamento de colunas -->
+      <div class="map-section" id="mapSection">
+        <div style="margin-bottom:12px;font-size:12px;color:var(--gy)">
+          Arquivo: <strong id="mapFileName" style="color:var(--gy2)">—</strong> &nbsp;·&nbsp;
+          <span id="mapRowCount">0</span> linhas detectadas
+        </div>
+        <div class="map-title">Mapeie as colunas do seu arquivo para os campos do sistema</div>
+        <div class="map-grid">
+          <div class="map-row"><div class="map-lbl">Mês de Ensaio<span>*</span></div><select class="fs" id="mapMes" style="min-width:0"></select></div>
+          <div class="map-row"><div class="map-lbl">Produto<span>*</span></div><select class="fs" id="mapProd" style="min-width:0"></select></div>
+          <div class="map-row"><div class="map-lbl">Lote<span>*</span></div><select class="fs" id="mapLote" style="min-width:0"></select></div>
+          <div class="map-row"><div class="map-lbl">Resultado (MPa)<span>*</span></div><select class="fs" id="mapRes" style="min-width:0"></select></div>
+          <div class="map-row"><div class="map-lbl">Lim. Mínimo</div><select class="fs" id="mapLmin" style="min-width:0"></select></div>
+          <div class="map-row"><div class="map-lbl">Lim. Máximo</div><select class="fs" id="mapLmax" style="min-width:0"></select></div>
+          <div class="map-row"><div class="map-lbl">Idade (dias)</div><select class="fs" id="mapIdade" style="min-width:0"></select></div>
+          <div class="map-row"><div class="map-lbl">Tipo de Ensaio</div><select class="fs" id="mapTipo" style="min-width:0"></select></div>
+        </div>
+
+        <div class="import-preview" id="importPreview">
+          <div class="import-preview-hdr">
+            <div class="import-preview-title">Pré-visualização (primeiras 5 linhas)</div>
+            <div class="import-preview-info" id="previewInfo"></div>
+          </div>
+          <div class="preview-tbl-wrap" id="previewTable"></div>
+        </div>
+
+        <div class="import-actions">
+          <button class="btn-import" onclick="pwdAsk('import',null,'Importar Planilha','Digite a senha para importar os registros')">&#10004; Importar todos os registros</button>
+          <button class="btn-cancel-import" onclick="cancelImport()">Cancelar</button>
+          <span class="import-msg" id="importMsg"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: TABELA RÁPIDA -->
+  <div class="ftab-page" id="ftab-batch">
+    <div class="batch-panel">
+      <div class="batch-title">Tabela de entrada rápida</div>
+      <div class="batch-sub">Preencha várias linhas de uma vez. Selecione o produto na linha para preencher os limites automaticamente. Pressione Tab para avançar entre campos.</div>
+      <div class="batch-tbl-wrap">
+        <table class="batch-tbl">
+          <thead>
+            <tr>
+              <th style="min-width:120px">Mês*</th>
+              <th style="min-width:140px">Produto*</th>
+              <th style="min-width:90px">Lote*</th>
+              <th style="min-width:70px">Idade</th>
+              <th style="min-width:100px">Lim. Mín.*</th>
+              <th style="min-width:100px">Lim. Máx.*</th>
+              <th style="min-width:110px">Resultado*</th>
+              <th style="min-width:90px">Status</th>
+              <th style="width:36px"></th>
+            </tr>
+          </thead>
+          <tbody id="batchBody"></tbody>
+        </table>
+      </div>
+      <div class="batch-bottom">
+        <button class="btn-add-row" onclick="addBatchRow()">+ Adicionar linha</button>
+        <button class="btn-save-batch" onclick="pwdAsk('batch',null,'Inserir Ensaios','Digite a senha para salvar os ensaios')">&#10004; Salvar todos</button>
+        <span class="batch-msg" id="batchMsg"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: REGISTRO ÚNICO -->
+  <div class="ftab-page" id="ftab-single">
+    <div class="fc">
+      <div class="ftit">Registrar Novo Ensaio</div>
+      <div class="fsub">Preencha todos os campos obrigatórios. Status calculado automaticamente.</div>
+      <div class="fg2">
+        <div class="fg"><div class="finl">Mês de Ensaio<span>*</span></div><input class="fi" type="month" id="fM"></div>
+        <div class="fg"><div class="finl">Produto<span>*</span></div><select class="fsel" id="fP" onchange="onPC()"></select></div>
+        <div class="fg"><div class="finl">Novo produto (se não existir)</div><input class="fi" type="text" id="fPN" placeholder="Nome do novo produto"></div>
+        <div class="fg"><div class="finl">Lote<span>*</span></div><input class="fi" type="text" id="fL" placeholder="Ex: 36400"></div>
+        <div class="fg"><div class="finl">Idade (dias)</div><input class="fi" type="number" id="fId" value="28" min="1"></div>
+        <div class="fg"><div class="finl">Tipo de Ensaio</div><input class="fi" type="text" id="fTp" value="Compressão (MPa)"></div>
+        <div class="fg"><div class="finl">Lim. Mínimo (MPa)<span>*</span></div><input class="fi" type="number" id="fMn" step="0.1" placeholder="Ex: 5.0" oninput="prev()"></div>
+        <div class="fg"><div class="finl">Lim. Máximo (MPa)<span>*</span></div><input class="fi" type="number" id="fMx" step="0.1" placeholder="Ex: 8.0" oninput="prev()"></div>
+        <div class="fg s2"><div class="finl">Resultado (MPa)<span>*</span></div><input class="fi" type="number" id="fRs" step="0.001" placeholder="Ex: 6.543" oninput="prev()" style="font-size:15px;font-weight:700"></div>
+        <div class="fg s2"><div class="finl">Pré-visualização</div><div class="prev" id="fPv">Preencha Resultado e Limites</div></div>
+      </div>
+      <div class="frow">
+        <button class="bsave" onclick="pwdAsk('salvar',null,'Inserir Ensaio','Digite a senha para salvar o ensaio')">&#10004; Salvar Ensaio</button>
+        <button class="bclear" onclick="limpar()">Limpar</button>
+        <span class="msg" id="fMsg"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Histórico da sessão -->
+  <div class="sessbox" style="margin-top:16px">
+    <div class="thd"><div class="thtit">Registros adicionados nesta sessão</div><div class="tcnt" id="sN">0 registros</div></div>
+    <div class="tw" style="max-height:260px">
+      <table><thead><tr><th>Mês</th><th>Produto</th><th>Lote</th><th>Resultado</th><th>Spec</th><th>Status</th></tr></thead><tbody id="sBody"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- BASE DE DADOS -->
+<div class="page" id="page-dados">
+  <div class="tbar">
+    <div class="fg"><div class="fl">Produto</div><select class="fs" id="tP" onchange="rTable()" style="min-width:155px"></select></div>
+    <div class="fg"><div class="fl">Status</div>
+      <select class="fs" id="tSt" onchange="rTable()" style="min-width:135px">
+        <option value="T">Todos</option><option value="A">Aprovados</option><option value="L">Rep. Abaixo do Mín</option><option value="H">Rep. Acima do Máx</option><option value="R">Todos Reprovados</option>
+      </select>
+    </div>
+    <div class="fg"><div class="fl">Buscar lote</div><input class="fi" type="text" id="tBs" placeholder="Número do lote..." oninput="rTable()" style="min-width:155px;background:var(--card)"></div>
+    <button class="bcsv" onclick="doCSV()" style="margin-top:19px">&#11015; Exportar CSV</button>
+  </div>
+  <div class="tbox">
+    <div class="thd"><div class="thtit">Base de Dados — Ensaios de Resistência</div><div class="tcnt" id="tCnt">—</div></div>
+    <div class="tw" style="max-height:580px">
+      <table><thead><tr><th>Mês</th><th>Produto</th><th>Lote</th><th>Idade</th><th>Resultado (MPa)</th><th>Lim. Mín.</th><th>Lim. Máx.</th><th>Status</th><th style="width:40px"></th></tr></thead><tbody id="tBody"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de senha -->
+<div class="pwd-overlay" id="pwdModal" style="display:none">
+  <div class="pwd-box">
+    <div class="pwd-icon">🔒</div>
+    <div class="pwd-title" id="pwdTitle">Autenticação necessária</div>
+    <div class="pwd-sub" id="pwdSub">Digite a senha para continuar</div>
+    <div class="pwd-input-wrap">
+      <input class="pwd-input" type="password" id="pwdInput" placeholder="••••••••"
+             onkeydown="if(event.key==='Enter')pwdConfirm()" autocomplete="off">
+      <button class="pwd-toggle" onclick="pwdToggle()" tabindex="-1">👁</button>
+    </div>
+    <div class="pwd-err" id="pwdErr"></div>
+    <div class="pwd-actions">
+      <button class="pwd-btn-ok" onclick="pwdConfirm()">Confirmar</button>
+      <button class="pwd-btn-cancel" onclick="pwdCancel()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de confirmação de exclusão -->
+<div class="modal-overlay" id="delModal" style="display:none" onclick="if(event.target===this)closeDelModal()">
+  <div class="modal-box">
+    <div class="modal-icon">🗑️</div>
+    <div class="modal-title">Confirmar exclusão</div>
+    <div class="modal-desc">Tem certeza que deseja excluir este ensaio?<br>Esta ação não pode ser desfeita.</div>
+    <div class="modal-detail" id="delDetail">—</div>
+    <div class="modal-actions">
+      <button class="btn-confirm-del" onclick="confirmDelete()">✕ Excluir</button>
+      <button class="btn-cancel-del" onclick="closeDelModal()">Cancelar</button>
+    </div>
+  </div>
+
+</div>
+
+<footer class="ft">Argamassa Bela Vista &nbsp;·&nbsp; Rua Hiroji Yokote, 106 — Osasco/SP &nbsp;·&nbsp; (11) 3608-0477 &nbsp;·&nbsp; vendas@argamassabelavista.com.br</footer>
+
+<script>
+// ══ CONFIGURAÇÃO SUPABASE ══
+// Preencha com suas credenciais após criar o projeto no Supabase
+const SUPABASE_URL = 'https://vnupchoemxegexxrrfzm.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_p1B077XEMOVGKjvmyewRQw_2bMVDnS3';
+const SUPABASE_TABLE = 'ensaios';
+
+const sbHeaders = () => ({
+  'Content-Type': 'application/json',
+  'apikey': SUPABASE_KEY,
+  'Authorization': 'Bearer ' + SUPABASE_KEY,
+  'Prefer': 'return=minimal'
+});
+
+// Indicador de modo: 'online' | 'offline'
+let SB_MODE = (SUPABASE_URL !== 'SUPABASE_URL_AQUI') ? 'online' : 'offline';
+
+// ══ DADOS ══
+const SEED = [{"mes":"2025-04","ml":"Apr/2025","p":"AAE12","l":"31520","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":14.572,"ok":true},{"mes":"2025-04","ml":"Apr/2025","p":"AAE12","l":"31583","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":15.896,"ok":true},{"mes":"2025-04","ml":"Apr/2025","p":"AAE12","l":"31608","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":17.172,"ok":false},{"mes":"2025-04","ml":"Apr/2025","p":"AAE12","l":"31633","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":15.117,"ok":true},{"mes":"2025-04","ml":"Apr/2025","p":"AAE12","l":"31663","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":12.406,"ok":true},{"mes":"2025-06","ml":"Jun/2025","p":"AAE12","l":"32497","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":12.705,"ok":true},{"mes":"2025-06","ml":"Jun/2025","p":"AAE12","l":"32505","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":17.127,"ok":false},{"mes":"2025-06","ml":"Jun/2025","p":"AAE12","l":"32526","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":16.614,"ok":false},{"mes":"2025-07","ml":"Jul/2025","p":"AAE12","l":"32585","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":10.753,"ok":false},{"mes":"2025-07","ml":"Jul/2025","p":"AAE12","l":"32585","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":10.787,"ok":false},{"mes":"2025-07","ml":"Jul/2025","p":"AAE12","l":"32600","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":13.343,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAE12","l":"32610","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":12.167,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAE12","l":"32659","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":13.959,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAE12","l":"32670","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":8.102,"ok":false},{"mes":"2025-07","ml":"Jul/2025","p":"AAE12","l":"32720","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":12.001,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAE12","l":"32736","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":12.584,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAE12","l":"32762","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":9.875,"ok":false},{"mes":"2025-07","ml":"Jul/2025","p":"AAE12","l":"32782","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":16.66,"ok":false},{"mes":"2025-07","ml":"Jul/2025","p":"AAE12","l":"32849","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":13.794,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAE12","l":"32864","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":12.685,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAE12","l":"32883","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":14.5,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAE12","l":"32891","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":12.63,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAE12","l":"32933","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":14.985,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAE12","l":"32957","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":11.365,"ok":false},{"mes":"2025-07","ml":"Jul/2025","p":"AAE12","l":"32971","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":12.493,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAE12","l":"32984","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":11.432,"ok":false},{"mes":"2025-07","ml":"Jul/2025","p":"AAE12","l":"32994","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":11.764,"ok":false},{"mes":"2025-07","ml":"Jul/2025","p":"AAE12","l":"33015","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":11.064,"ok":false},{"mes":"2025-08","ml":"Aug/2025","p":"AAE12","l":"32585","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":7.107,"ok":false},{"mes":"2025-08","ml":"Aug/2025","p":"AAE12","l":"33029","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":11.095,"ok":false},{"mes":"2025-08","ml":"Aug/2025","p":"AAE12","l":"33034","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":11.018,"ok":false},{"mes":"2025-08","ml":"Aug/2025","p":"AAE12","l":"33055","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":11.363,"ok":false},{"mes":"2025-08","ml":"Aug/2025","p":"AAE12","l":"33079","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":9.44,"ok":false},{"mes":"2025-08","ml":"Aug/2025","p":"AAE12","l":"33098","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":15.183,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAE12","l":"33120","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":13.447,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAE12","l":"33145","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":11.563,"ok":false},{"mes":"2025-08","ml":"Aug/2025","p":"AAE12","l":"33158","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":12.105,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAE12","l":"33225","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":13.682,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAE12","l":"33253","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":13.407,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAE12","l":"33261","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":12.544,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAE12","l":"33290","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":12.201,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAE12","l":"33317","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":12.127,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAE12","l":"33318","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":12.948,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAE12","l":"33359","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":11.243,"ok":false},{"mes":"2025-08","ml":"Aug/2025","p":"AAE12","l":"33385","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":11.322,"ok":false},{"mes":"2025-09","ml":"Sep/2025","p":"AAE12","l":"32670","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":8.377,"ok":false},{"mes":"2025-09","ml":"Sep/2025","p":"AAE12","l":"32957","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":10.96,"ok":false},{"mes":"2025-09","ml":"Sep/2025","p":"AAE12","l":"32984","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":10.601,"ok":false},{"mes":"2025-09","ml":"Sep/2025","p":"AAE12","l":"33015","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":11.145,"ok":false},{"mes":"2025-09","ml":"Sep/2025","p":"AAE12","l":"33434","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":15.769,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAE12","l":"33459","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":11.743,"ok":false},{"mes":"2025-09","ml":"Sep/2025","p":"AAE12","l":"33477","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":11.54,"ok":false},{"mes":"2025-09","ml":"Sep/2025","p":"AAE12","l":"33488","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":16.19,"ok":false},{"mes":"2025-09","ml":"Sep/2025","p":"AAE12","l":"33501","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":15.821,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAE12","l":"33655","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":12.13,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAE12","l":"33719","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":14.079,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAE12","l":"33779","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":12.941,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAE12","l":"33811","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":9.437,"ok":false},{"mes":"2025-10","ml":"Oct/2025","p":"AAE12","l":"33890","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":14.458,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAE12","l":"33942","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":15.212,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAE12","l":"33953","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":13.719,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAE12","l":"34022","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":14.23,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAE12","l":"34022","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":13.135,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAE12","l":"34042","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":13.791,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAE12","l":"34066","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":14.605,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAE12","l":"34092","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":19.406,"ok":false},{"mes":"2025-10","ml":"Oct/2025","p":"AAE12","l":"34095","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":12.936,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAE12","l":"34129","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":14.115,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAE12","l":"34135","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":13.744,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAE12","l":"34166","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":18.931,"ok":false},{"mes":"2025-10","ml":"Oct/2025","p":"AAE12","l":"34214","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":20.061,"ok":false},{"mes":"2025-10","ml":"Oct/2025","p":"AAE12","l":"34262","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":14.945,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAE12","l":"34285","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":13.276,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAE12","l":"34302","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":15.897,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAE12","l":"34361","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":13.234,"ok":true},{"mes":"2025-11","ml":"Nov/2025","p":"AAE12","l":"34363","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":18.967,"ok":false},{"mes":"2025-11","ml":"Nov/2025","p":"AAE12","l":"34364","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":21.041,"ok":false},{"mes":"2025-11","ml":"Nov/2025","p":"AAE12","l":"34388","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":16.588,"ok":false},{"mes":"2025-11","ml":"Nov/2025","p":"AAE12","l":"34389","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":15.296,"ok":true},{"mes":"2025-11","ml":"Nov/2025","p":"AAE12","l":"34400","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":13.876,"ok":true},{"mes":"2025-11","ml":"Nov/2025","p":"AAE12","l":"34456","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":20.459,"ok":false},{"mes":"2025-11","ml":"Nov/2025","p":"AAE12","l":"34477","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":16.806,"ok":false},{"mes":"2025-11","ml":"Nov/2025","p":"AAE12","l":"34543","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":12.627,"ok":true},{"mes":"2025-11","ml":"Nov/2025","p":"AAE12","l":"34565","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":12.73,"ok":true},{"mes":"2025-11","ml":"Nov/2025","p":"AAE12","l":"34566","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":13.527,"ok":true},{"mes":"2025-11","ml":"Nov/2025","p":"AAE12","l":"34566","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":12.337,"ok":true},{"mes":"2025-12","ml":"Dec/2025","p":"AAE12","l":"34628","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":13.383,"ok":true},{"mes":"2025-12","ml":"Dec/2025","p":"AAE12","l":"34629","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":13.684,"ok":true},{"mes":"2025-12","ml":"Dec/2025","p":"AAE12","l":"34703","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":16.741,"ok":false},{"mes":"2025-12","ml":"Dec/2025","p":"AAE12","l":"34723","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":17.457,"ok":false},{"mes":"2025-12","ml":"Dec/2025","p":"AAE12","l":"34738","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":13.639,"ok":true},{"mes":"2025-12","ml":"Dec/2025","p":"AAE12","l":"34739","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":13.553,"ok":true},{"mes":"2025-12","ml":"Dec/2025","p":"AAE12","l":"34784","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":13.934,"ok":true},{"mes":"2025-12","ml":"Dec/2025","p":"AAE12","l":"34801","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":14.141,"ok":true},{"mes":"2025-12","ml":"Dec/2025","p":"AAE12","l":"34801","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":13.055,"ok":true},{"mes":"2025-12","ml":"Dec/2025","p":"AAE12","l":"34806","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":13.471,"ok":true},{"mes":"2025-12","ml":"Dec/2025","p":"AAE12","l":"34888","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":12.562,"ok":true},{"mes":"2025-12","ml":"Dec/2025","p":"AAE12","l":"34960","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":15.905,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAE12","l":"34783","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":13.894,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAE12","l":"34828","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":14.905,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAE12","l":"34838","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":15.074,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAE12","l":"34864","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":10.043,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"AAE12","l":"34889","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":15.38,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAE12","l":"35035","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":10.331,"ok":false},{"mes":"2026-02","ml":"Feb/2026","p":"AAE12","l":"34925","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":11.12,"ok":false},{"mes":"2026-02","ml":"Feb/2026","p":"AAE12","l":"34999","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":14.171,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAE12","l":"35000","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":14.171,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAE12","l":"35098","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":12.152,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAE12","l":"35161","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":12.464,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAE12","l":"35294","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":15.696,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAE12","l":"35295","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":16.19,"ok":false},{"mes":"2026-02","ml":"Feb/2026","p":"AAE12","l":"35360","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":14.171,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAE12","l":"35387","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":14.434,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAE12","l":"35578","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":11.547,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"AAE12","l":"35137","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":18.182,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"AAE12","l":"35460","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":13.19,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAE12","l":"35512","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":16.662,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"AAE12","l":"35536","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":14.793,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAE12","l":"35538","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":14.763,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAE12","l":"35586","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":9.788,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"AAE12","l":"35617","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":9.978,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"AAE12","l":"35664","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":14.793,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAE12","l":"35667","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":14.235,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAE12","l":"35711","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":15.1,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAE12","l":"35712","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":13.487,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAE12","l":"35738","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":14.763,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAE12","l":"35744","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":11.071,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"AAE12","l":"35888","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":14.984,"ok":true},{"mes":"2026-04","ml":"Apr/2026","p":"AAE12","l":"35772","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":16.241,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"AAE12","l":"35772","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":14.44,"ok":true},{"mes":"2026-04","ml":"Apr/2026","p":"AAE12","l":"35809","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":14.829,"ok":true},{"mes":"2026-04","ml":"Apr/2026","p":"AAE12","l":"35823","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":13.137,"ok":true},{"mes":"2026-04","ml":"Apr/2026","p":"AAE12","l":"35847","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":13.164,"ok":true},{"mes":"2026-04","ml":"Apr/2026","p":"AAE12","l":"35932","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":22.198,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"AAE12","l":"35958","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":18.437,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"AAE12","l":"35962","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":13.191,"ok":true},{"mes":"2026-04","ml":"Apr/2026","p":"AAE12","l":"36076","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":16.077,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"AAE12","l":"36099","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":14.166,"ok":true},{"mes":"2026-04","ml":"Apr/2026","p":"AAE12","l":"36140","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":15.873,"ok":true},{"mes":"2026-04","ml":"Apr/2026","p":"AAE12","l":"36140","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":14.195,"ok":true},{"mes":"2026-04","ml":"Apr/2026","p":"AAE12","l":"36187","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":14.319,"ok":true},{"mes":"2026-04","ml":"Apr/2026","p":"AAE12","l":"36188","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":13.17,"ok":true},{"mes":"2025-04","ml":"Apr/2025","p":"AAE16","l":"31364","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":25.525,"ok":false},{"mes":"2025-04","ml":"Apr/2025","p":"AAE16","l":"31411","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":23.28,"ok":false},{"mes":"2025-04","ml":"Apr/2025","p":"AAE16","l":"31525","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":19.738,"ok":false},{"mes":"2025-04","ml":"Apr/2025","p":"AAE16","l":"31582","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":18.95,"ok":false},{"mes":"2025-04","ml":"Apr/2025","p":"AAE16","l":"31672","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":27.994,"ok":false},{"mes":"2025-06","ml":"Jun/2025","p":"AAE16","l":"32390","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":20.971,"ok":false},{"mes":"2025-06","ml":"Jun/2025","p":"AAE16","l":"32504","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":18.785,"ok":false},{"mes":"2025-06","ml":"Jun/2025","p":"AAE16","l":"32584","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":18.505,"ok":false},{"mes":"2025-07","ml":"Jul/2025","p":"AAE16","l":"32628","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":18.002,"ok":false},{"mes":"2025-07","ml":"Jul/2025","p":"AAE16","l":"32700","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":16.558,"ok":false},{"mes":"2025-07","ml":"Jul/2025","p":"AAE16","l":"32761","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":19.876,"ok":false},{"mes":"2025-07","ml":"Jul/2025","p":"AAE16","l":"32817","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":19.944,"ok":false},{"mes":"2025-07","ml":"Jul/2025","p":"AAE16","l":"32851","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":17.632,"ok":false},{"mes":"2025-07","ml":"Jul/2025","p":"AAE16","l":"32867","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":18.329,"ok":false},{"mes":"2025-07","ml":"Jul/2025","p":"AAE16","l":"32905","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":19.629,"ok":false},{"mes":"2025-07","ml":"Jul/2025","p":"AAE16","l":"32939","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":18.464,"ok":false},{"mes":"2025-08","ml":"Aug/2025","p":"AAE16","l":"33014","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":13.432,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAE16","l":"33054","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":17.287,"ok":false},{"mes":"2025-08","ml":"Aug/2025","p":"AAE16","l":"33097","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":18.337,"ok":false},{"mes":"2025-08","ml":"Aug/2025","p":"AAE16","l":"33119","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":17.162,"ok":false},{"mes":"2025-08","ml":"Aug/2025","p":"AAE16","l":"33286","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":18.0,"ok":false},{"mes":"2025-08","ml":"Aug/2025","p":"AAE16","l":"33337","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":17.156,"ok":false},{"mes":"2025-08","ml":"Aug/2025","p":"AAE16","l":"33358","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":20.561,"ok":false},{"mes":"2025-09","ml":"Sep/2025","p":"AAE16","l":"33433","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":16.905,"ok":false},{"mes":"2025-09","ml":"Sep/2025","p":"AAE16","l":"33545","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":15.855,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAE16","l":"33654","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":14.75,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAE16","l":"33688","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":15.055,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAE16","l":"33778","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":16.508,"ok":false},{"mes":"2025-10","ml":"Oct/2025","p":"AAE16","l":"33433","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":19.423,"ok":false},{"mes":"2025-10","ml":"Oct/2025","p":"AAE16","l":"33736","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":12.306,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAE16","l":"33792","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":16.139,"ok":false},{"mes":"2025-10","ml":"Oct/2025","p":"AAE16","l":"33810","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":20.804,"ok":false},{"mes":"2025-10","ml":"Oct/2025","p":"AAE16","l":"33827","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":17.621,"ok":false},{"mes":"2025-10","ml":"Oct/2025","p":"AAE16","l":"33850","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":22.204,"ok":false},{"mes":"2025-10","ml":"Oct/2025","p":"AAE16","l":"33925","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":23.088,"ok":false},{"mes":"2025-11","ml":"Nov/2025","p":"AAE16","l":"33996","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":20.96,"ok":false},{"mes":"2025-11","ml":"Nov/2025","p":"AAE16","l":"33996","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":20.978,"ok":false},{"mes":"2025-11","ml":"Nov/2025","p":"AAE16","l":"34336","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":19.928,"ok":false},{"mes":"2025-11","ml":"Nov/2025","p":"AAE16","l":"34437","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":20.11,"ok":false},{"mes":"2025-11","ml":"Nov/2025","p":"AAE16","l":"34437","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":20.114,"ok":false},{"mes":"2025-11","ml":"Nov/2025","p":"AAE16","l":"34455","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":19.93,"ok":false},{"mes":"2025-11","ml":"Nov/2025","p":"AAE16","l":"34455","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":16.561,"ok":false},{"mes":"2025-11","ml":"Nov/2025","p":"AAE16","l":"34476","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":17.07,"ok":false},{"mes":"2025-11","ml":"Nov/2025","p":"AAE16","l":"34476","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":20.958,"ok":false},{"mes":"2025-12","ml":"Dec/2025","p":"AAE16","l":"34487","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":17.979,"ok":false},{"mes":"2025-12","ml":"Dec/2025","p":"AAE16","l":"34611","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":18.961,"ok":false},{"mes":"2025-12","ml":"Dec/2025","p":"AAE16","l":"34626","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":18.683,"ok":false},{"mes":"2025-12","ml":"Dec/2025","p":"AAE16","l":"34702","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":16.44,"ok":false},{"mes":"2025-12","ml":"Dec/2025","p":"AAE16","l":"34757","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":18.633,"ok":false},{"mes":"2025-12","ml":"Dec/2025","p":"AAE16","l":"34947","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":22.033,"ok":false},{"mes":"2025-12","ml":"Dec/2025","p":"AAE16","l":"34957","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":19.34,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"AAE16","l":"34979","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":20.898,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"AAE16","l":"34997","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":18.802,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"AAE16","l":"34998","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":20.106,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"AAE16","l":"35034","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":19.407,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"AAE16","l":"35097","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":17.999,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"AAE16","l":"35205","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":13.353,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAE16","l":"35296","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":18.331,"ok":false},{"mes":"2026-02","ml":"Feb/2026","p":"AAE16","l":"35030","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":16.636,"ok":false},{"mes":"2026-02","ml":"Feb/2026","p":"AAE16","l":"35298","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":16.636,"ok":false},{"mes":"2026-02","ml":"Feb/2026","p":"AAE16","l":"35357","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":18.802,"ok":false},{"mes":"2026-02","ml":"Feb/2026","p":"AAE16","l":"35362","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":17.903,"ok":false},{"mes":"2026-02","ml":"Feb/2026","p":"AAE16","l":"35395","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":15.332,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAE16","l":"35511","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":17.698,"ok":false},{"mes":"2026-02","ml":"Feb/2026","p":"AAE16","l":"35585","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":16.779,"ok":false},{"mes":"2026-02","ml":"Feb/2026","p":"AAE16","l":"35607","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":18.553,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"AAE16","l":"35420","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":19.532,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"AAE16","l":"35497","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":17.489,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"AAE16","l":"35571","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":22.012,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"AAE16","l":"35735","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":13.257,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAE16","l":"35808","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":21.222,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"AAE16","l":"35822","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":16.211,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"AAE16","l":"35846","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":14.378,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAE16","l":"35862","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":15.124,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAE16","l":"35870","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":14.806,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAE16","l":"35883","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":12.744,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAE16","l":"35893","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":21.089,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"AAE16","l":"35894","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":20.155,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"AAE16","l":"35919","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":20.423,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"AAE16","l":"35951","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":23.895,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"AAE16","l":"35957","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":18.841,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"AAE16","l":"36060","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":20.584,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"AAE16","l":"36061","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":24.11,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"AAE16","l":"36077","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":20.301,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"AAE16","l":"36094","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":20.386,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"AAE16","l":"36095","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":20.754,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"AAE16","l":"36096","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":21.383,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"AAE16","l":"36138","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":16.779,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"AAE16","l":"36138","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":20.773,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"AAE16","l":"36138","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":19.489,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"AAE16","l":"36189","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":27.336,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"AAE16","l":"36191","id":28,"t":"Compressão (MPa)","mn":12.0,"mx":16,"r":17.7,"ok":false},{"mes":"2025-06","ml":"Jun/2025","p":"AAE20","l":"32371","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":19.679,"ok":true},{"mes":"2025-06","ml":"Jun/2025","p":"AAE20","l":"32389","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":29.916,"ok":false},{"mes":"2025-07","ml":"Jul/2025","p":"AAE20","l":"32444","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":24.07,"ok":false},{"mes":"2025-09","ml":"Sep/2025","p":"AAE20","l":"32608","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":17.147,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAE20","l":"33532","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":21.065,"ok":false},{"mes":"2025-09","ml":"Sep/2025","p":"AAE20","l":"33715","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":22.721,"ok":false},{"mes":"2025-09","ml":"Sep/2025","p":"AAE20","l":"33717","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":18.953,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAE20","l":"32841","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":20.276,"ok":false},{"mes":"2025-10","ml":"Oct/2025","p":"AAE20","l":"33777","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":21.712,"ok":false},{"mes":"2025-10","ml":"Oct/2025","p":"AAE20","l":"33994","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":26.748,"ok":false},{"mes":"2025-10","ml":"Oct/2025","p":"AAE20","l":"33995","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":26.875,"ok":false},{"mes":"2025-10","ml":"Oct/2025","p":"AAE20","l":"34112","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":27.928,"ok":false},{"mes":"2025-11","ml":"Nov/2025","p":"AAE20","l":"34362","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":27.824,"ok":false},{"mes":"2025-12","ml":"Dec/2025","p":"AAE20","l":"34454","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":25.295,"ok":false},{"mes":"2025-12","ml":"Dec/2025","p":"AAE20","l":"34496","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":21.183,"ok":false},{"mes":"2025-12","ml":"Dec/2025","p":"AAE20","l":"34625","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":20.498,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"AAE20","l":"34492","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":22.807,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"AAE20","l":"34529","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":22.142,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"AAE20","l":"35109","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":26.482,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"AAE20","l":"35157","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":23.193,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"AAE20","l":"35158","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":22.39,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"AAE20","l":"35201","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":23.193,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"AAE20","l":"35246","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":21.889,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"AAE20","l":"35270","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":22.473,"ok":false},{"mes":"2026-02","ml":"Feb/2026","p":"AAE20","l":"35297","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":22.495,"ok":false},{"mes":"2026-02","ml":"Feb/2026","p":"AAE20","l":"35375","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":20.961,"ok":false},{"mes":"2026-02","ml":"Feb/2026","p":"AAE20","l":"35584","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":21.869,"ok":false},{"mes":"2026-02","ml":"Feb/2026","p":"AAE20","l":"35606","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":27.909,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"AAE20","l":"35621","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":23.098,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"AAE20","l":"35844","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":19.432,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAE20","l":"35845","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":23.2,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"AAE20","l":"35865","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":24.588,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"AAE20","l":"35923","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":30.435,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"AAE20","l":"35952","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":25.57,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"AAE20","l":"35954","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":26.507,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"AAE20","l":"35869","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":22.705,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"AAE20","l":"35956","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":28.052,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"AAE20","l":"35990","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":29.08,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"AAE20","l":"36078","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":23.449,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"AAE20","l":"36093","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":20.87,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"AAE20","l":"36093","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":21.418,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"AAE20","l":"36192","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":32.953,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"AAE20","l":"36293","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":25.343,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"AAE20","l":"36352","id":28,"t":"Compressão (MPa)","mn":16.0,"mx":20,"r":32.953,"ok":false},{"mes":"2025-04","ml":"Apr/2025","p":"AAE5","l":"31388","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":8.26,"ok":false},{"mes":"2025-04","ml":"Apr/2025","p":"AAE5","l":"31406","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":8.19,"ok":false},{"mes":"2025-04","ml":"Apr/2025","p":"AAE5","l":"31515","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":6.81,"ok":true},{"mes":"2025-04","ml":"Apr/2025","p":"AAE5","l":"31585","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":6.87,"ok":true},{"mes":"2025-04","ml":"Apr/2025","p":"AAE5","l":"31601","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":6.15,"ok":true},{"mes":"2025-04","ml":"Apr/2025","p":"AAE5","l":"31667","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":7.24,"ok":true},{"mes":"2025-04","ml":"Apr/2025","p":"AAE5","l":"31667","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":8.23,"ok":false},{"mes":"2025-04","ml":"Apr/2025","p":"AAE5","l":"31676","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":6.47,"ok":true},{"mes":"2025-06","ml":"Jun/2025","p":"AAE5","l":"32528","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":9.57,"ok":false},{"mes":"2025-07","ml":"Jul/2025","p":"AAE5","l":"32561","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":4.991,"ok":false},{"mes":"2025-07","ml":"Jul/2025","p":"AAE5","l":"32612","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":4.647,"ok":false},{"mes":"2025-07","ml":"Jul/2025","p":"AAE5","l":"32641","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":3.312,"ok":false},{"mes":"2025-07","ml":"Jul/2025","p":"AAE5","l":"32703","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":7.668,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAE5","l":"32721","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":5.755,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAE5","l":"32739","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":6.163,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAE5","l":"32783","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":8.344,"ok":false},{"mes":"2025-07","ml":"Jul/2025","p":"AAE5","l":"32785","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":8.199,"ok":false},{"mes":"2025-07","ml":"Jul/2025","p":"AAE5","l":"32870","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":14.852,"ok":false},{"mes":"2025-07","ml":"Jul/2025","p":"AAE5","l":"32890","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":5.934,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAE5","l":"32908","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":6.273,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAE5","l":"32920","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":8.472,"ok":false},{"mes":"2025-07","ml":"Jul/2025","p":"AAE5","l":"32935","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":5.787,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAE5","l":"32942","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":7.96,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAE5","l":"32996","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":11.917,"ok":false},{"mes":"2025-08","ml":"Aug/2025","p":"AAE5","l":"33036","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":6.513,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAE5","l":"33057","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":5.836,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAE5","l":"33085","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":12.382,"ok":false},{"mes":"2025-08","ml":"Aug/2025","p":"AAE5","l":"33147","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":4.59,"ok":false},{"mes":"2025-08","ml":"Aug/2025","p":"AAE5","l":"33179","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":5.879,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAE5","l":"33182","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":5.923,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAE5","l":"33224","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":4.382,"ok":false},{"mes":"2025-08","ml":"Aug/2025","p":"AAE5","l":"332636","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":4.907,"ok":false},{"mes":"2025-08","ml":"Aug/2025","p":"AAE5","l":"33267","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":5.616,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAE5","l":"33301","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":4.204,"ok":false},{"mes":"2025-08","ml":"Aug/2025","p":"AAE5","l":"33420","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":4.902,"ok":false},{"mes":"2025-09","ml":"Sep/2025","p":"AAE5","l":"33431","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":4.44,"ok":false},{"mes":"2025-09","ml":"Sep/2025","p":"AAE5","l":"33436","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":4.661,"ok":false},{"mes":"2025-09","ml":"Sep/2025","p":"AAE5","l":"33461","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":5.939,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAE5","l":"33490","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":5.846,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAE5","l":"33548","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":3.063,"ok":false},{"mes":"2025-09","ml":"Sep/2025","p":"AAE5","l":"33593","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":6.903,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAE5","l":"33643","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":5.789,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAE5","l":"33657","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":5.096,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAE5","l":"33746","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":4.184,"ok":false},{"mes":"2025-09","ml":"Sep/2025","p":"AAE5","l":"33760","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":3.843,"ok":false},{"mes":"2025-09","ml":"Sep/2025","p":"AAE5","l":"33818","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":6.258,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAE5","l":"33691","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":2.808,"ok":false},{"mes":"2025-10","ml":"Oct/2025","p":"AAE5","l":"33781","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":5.146,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAE5","l":"33849","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":5.04,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAE5","l":"33892","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":5.375,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAE5","l":"33999","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":7.794,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAE5","l":"34094","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":13.959,"ok":false},{"mes":"2025-10","ml":"Oct/2025","p":"AAE5","l":"34101","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":6.38,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAE5","l":"34155","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":6.896,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAE5","l":"34171","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":7.772,"ok":true},{"mes":"2025-11","ml":"Nov/2025","p":"AAE5","l":"34171","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":7.009,"ok":true},{"mes":"2025-11","ml":"Nov/2025","p":"AAE5","l":"34264","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":6.779,"ok":true},{"mes":"2025-11","ml":"Nov/2025","p":"AAE5","l":"34264","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":10.064,"ok":false},{"mes":"2025-11","ml":"Nov/2025","p":"AAE5","l":"34392","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":19.521,"ok":false},{"mes":"2025-11","ml":"Nov/2025","p":"AAE5","l":"34392","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":9.723,"ok":false},{"mes":"2025-11","ml":"Nov/2025","p":"AAE5","l":"34459","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":8.365,"ok":false},{"mes":"2025-11","ml":"Nov/2025","p":"AAE5","l":"34471","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":7.687,"ok":true},{"mes":"2025-11","ml":"Nov/2025","p":"AAE5","l":"34479","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":7.219,"ok":true},{"mes":"2025-11","ml":"Nov/2025","p":"AAE5","l":"34500","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":8.01,"ok":false},{"mes":"2025-11","ml":"Nov/2025","p":"AAE5","l":"34524","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":5.264,"ok":true},{"mes":"2025-11","ml":"Nov/2025","p":"AAE5","l":"34533","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":7.291,"ok":true},{"mes":"2025-11","ml":"Nov/2025","p":"AAE5","l":"34569","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":4.764,"ok":false},{"mes":"2025-11","ml":"Nov/2025","p":"AAE5","l":"34637","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":6.785,"ok":true},{"mes":"2025-12","ml":"Dec/2025","p":"AAE5","l":"34705","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":7.72,"ok":true},{"mes":"2025-12","ml":"Dec/2025","p":"AAE5","l":"34755","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":7.801,"ok":true},{"mes":"2025-12","ml":"Dec/2025","p":"AAE5","l":"34760","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":8.759,"ok":false},{"mes":"2025-12","ml":"Dec/2025","p":"AAE5","l":"34767","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":6.339,"ok":true},{"mes":"2025-12","ml":"Dec/2025","p":"AAE5","l":"34777","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":12.05,"ok":false},{"mes":"2025-12","ml":"Dec/2025","p":"AAE5","l":"34779","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":6.494,"ok":true},{"mes":"2025-12","ml":"Dec/2025","p":"AAE5","l":"34787","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":4.567,"ok":false},{"mes":"2025-12","ml":"Dec/2025","p":"AAE5","l":"34788","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":5.641,"ok":true},{"mes":"2025-12","ml":"Dec/2025","p":"AAE5","l":"34808","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":7.327,"ok":true},{"mes":"2025-12","ml":"Dec/2025","p":"AAE5","l":"34866","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":6.967,"ok":true},{"mes":"2025-12","ml":"Dec/2025","p":"AAE5","l":"34964","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":9.436,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"AAE5","l":"34831","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":4.368,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"AAE5","l":"34893","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":8.335,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"AAE5","l":"34929","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":4.793,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"AAE5","l":"35003","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":7.478,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAE5","l":"35004","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":4.488,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"AAE5","l":"35033","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":5.255,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAE5","l":"35037","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":5.806,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAE5","l":"35060","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":6.903,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAE5","l":"35100","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":5.63,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAE5","l":"35139","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":13.744,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"AAE5","l":"35244","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":6.516,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAE5","l":"35288","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":5.067,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAE5","l":"35245","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":5.779,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAE5","l":"35291","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":13.04,"ok":false},{"mes":"2026-02","ml":"Feb/2026","p":"AAE5","l":"35358","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":6.091,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAE5","l":"35390","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":5.93,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAE5","l":"35423","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":8.71,"ok":false},{"mes":"2026-02","ml":"Feb/2026","p":"AAE5","l":"35466","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":4.699,"ok":false},{"mes":"2026-02","ml":"Feb/2026","p":"AAE5","l":"35467","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":7.306,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAE5","l":"35500","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":5.116,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAE5","l":"35515","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":6.16,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAE5","l":"35567","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":6.034,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAE5","l":"35588","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":5.998,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAE5","l":"35715","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":5.998,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAE5","l":"35569","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":10.966,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"AAE5","l":"35580","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":5.418,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAE5","l":"35640","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":4.414,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"AAE5","l":"35650","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":4.72,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"AAE5","l":"35650","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":7.874,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAE5","l":"35666","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":4.715,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"AAE5","l":"35716","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":5.418,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAE5","l":"35740","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":4.952,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"AAE5","l":"35774","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":4.647,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"AAE5","l":"35776","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":5.883,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAE5","l":"35793","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":7.207,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAE5","l":"35826","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":8.999,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"AAE5","l":"35848","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":5.511,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAE5","l":"35872","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":5.94,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAE5","l":"35965","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":6.557,"ok":true},{"mes":"2026-05","ml":"May/2026","p":"AAE5","l":"35933","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":9.549,"ok":false},{"mes":"2026-05","ml":"May/2026","p":"AAE5","l":"35960","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":8.226,"ok":false},{"mes":"2026-05","ml":"May/2026","p":"AAE5","l":"35993","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":10.444,"ok":false},{"mes":"2026-05","ml":"May/2026","p":"AAE5","l":"36016","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":7.936,"ok":true},{"mes":"2026-05","ml":"May/2026","p":"AAE5","l":"36017","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":21.96,"ok":false},{"mes":"2026-05","ml":"May/2026","p":"AAE5","l":"36105","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":6.901,"ok":true},{"mes":"2026-05","ml":"May/2026","p":"AAE5","l":"36145","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":5.997,"ok":true},{"mes":"2026-05","ml":"May/2026","p":"AAE5","l":"36146","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":7.781,"ok":true},{"mes":"2026-05","ml":"May/2026","p":"AAE5","l":"36162","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":7.362,"ok":true},{"mes":"2026-05","ml":"May/2026","p":"AAE5","l":"36178","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":5.063,"ok":true},{"mes":"2026-05","ml":"May/2026","p":"AAE5","l":"36180","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":5.916,"ok":true},{"mes":"2026-05","ml":"May/2026","p":"AAE5","l":"36181","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":6.576,"ok":true},{"mes":"2026-05","ml":"May/2026","p":"AAE5","l":"","id":28,"t":"Compressão (MPa)","mn":5.0,"mx":8,"r":4.95,"ok":false},{"mes":"2025-04","ml":"Apr/2025","p":"AAE8","l":"31408","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":8.61,"ok":true},{"mes":"2025-04","ml":"Apr/2025","p":"AAE8","l":"31427","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":12.055,"ok":false},{"mes":"2025-04","ml":"Apr/2025","p":"AAE8","l":"31514","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":13.525,"ok":false},{"mes":"2025-04","ml":"Apr/2025","p":"AAE8","l":"31584","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":9.318,"ok":true},{"mes":"2025-04","ml":"Apr/2025","p":"AAE8","l":"31675","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":12.053,"ok":false},{"mes":"2025-06","ml":"Jun/2025","p":"AAE8","l":"32447","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":14.33,"ok":false},{"mes":"2025-07","ml":"Jul/2025","p":"AAE8","l":"32527","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":8.786,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAE8","l":"32586","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":11.359,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAE8","l":"32611","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":12.732,"ok":false},{"mes":"2025-07","ml":"Jul/2025","p":"AAE8","l":"32702","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":15.148,"ok":false},{"mes":"2025-07","ml":"Jul/2025","p":"AAE8","l":"32735","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":14.994,"ok":false},{"mes":"2025-07","ml":"Jul/2025","p":"AAE8","l":"32784","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":13.497,"ok":false},{"mes":"2025-07","ml":"Jul/2025","p":"AAE8","l":"32842","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":12.555,"ok":false},{"mes":"2025-07","ml":"Jul/2025","p":"AAE8","l":"32892","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":11.246,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAE8","l":"32934","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":9.98,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAE8","l":"32941","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":10.61,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAE8","l":"32972","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":7.754,"ok":false},{"mes":"2025-08","ml":"Aug/2025","p":"AAE8","l":"32231","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":9.839,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAE8","l":"32985","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":10.582,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAE8","l":"33035","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":10.685,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAE8","l":"33056","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":10.777,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAE8","l":"33084","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":9.522,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAE8","l":"33099","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":8.148,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAE8","l":"33159","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":10.413,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAE8","l":"33193","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":13.724,"ok":false},{"mes":"2025-08","ml":"Aug/2025","p":"AAE8","l":"33208","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":9.535,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAE8","l":"33211","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":11.92,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAE8","l":"33251","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":11.401,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAE8","l":"33262","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":11.957,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAE8","l":"33319","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":8.491,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAE8","l":"33354","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":10.341,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAE8","l":"33360","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":10.225,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAE8","l":"32972","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":8.503,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAE8","l":"33460","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":10.275,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAE8","l":"33506","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":12.333,"ok":false},{"mes":"2025-09","ml":"Sep/2025","p":"AAE8","l":"33591","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":8.229,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAE8","l":"33614","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":10.029,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAE8","l":"33641","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":10.058,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAE8","l":"33642","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":9.457,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAE8","l":"33646","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":10.445,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAE8","l":"33690","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":11.654,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAE8","l":"33708","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":11.702,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAE8","l":"33711","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":9.48,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAE8","l":"33721","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":10.909,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAE8","l":"33745","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":9.768,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAE8","l":"33759","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":10.909,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAE8","l":"33759","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":9.191,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAE8","l":"33806","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":24.85,"ok":false},{"mes":"2025-09","ml":"Sep/2025","p":"AAE8","l":"33829","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":10.099,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAE8","l":"33829","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":9.446,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAE8","l":"33880","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":9.438,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAE8","l":"33911","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":10.573,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAE8","l":"34028","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":13.964,"ok":false},{"mes":"2025-10","ml":"Oct/2025","p":"AAE8","l":"34067","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":15.248,"ok":false},{"mes":"2025-10","ml":"Oct/2025","p":"AAE8","l":"34097","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":13.176,"ok":false},{"mes":"2025-10","ml":"Oct/2025","p":"AAE8","l":"34163","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":12.099,"ok":false},{"mes":"2025-10","ml":"Oct/2025","p":"AAE8","l":"34165","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":10.706,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAE8","l":"34215","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":13.625,"ok":false},{"mes":"2025-10","ml":"Oct/2025","p":"AAE8","l":"34224","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":14.929,"ok":false},{"mes":"2025-10","ml":"Oct/2025","p":"AAE8","l":"34263","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":14.739,"ok":false},{"mes":"2025-10","ml":"Oct/2025","p":"AAE8","l":"34303","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":8.26,"ok":true},{"mes":"2025-11","ml":"Nov/2025","p":"AAE8","l":"34303","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":17.24,"ok":false},{"mes":"2025-11","ml":"Nov/2025","p":"AAE8","l":"34338","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":12.291,"ok":false},{"mes":"2025-11","ml":"Nov/2025","p":"AAE8","l":"34429","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":9.962,"ok":true},{"mes":"2025-11","ml":"Nov/2025","p":"AAE8","l":"34438","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":13.226,"ok":false},{"mes":"2025-11","ml":"Nov/2025","p":"AAE8","l":"34457","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":23.111,"ok":false},{"mes":"2025-11","ml":"Nov/2025","p":"AAE8","l":"34458","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":13.067,"ok":false},{"mes":"2025-11","ml":"Nov/2025","p":"AAE8","l":"34478","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":9.636,"ok":true},{"mes":"2025-11","ml":"Nov/2025","p":"AAE8","l":"34544","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":11.401,"ok":true},{"mes":"2025-11","ml":"Nov/2025","p":"AAE8","l":"34568","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":14.578,"ok":false},{"mes":"2025-11","ml":"Nov/2025","p":"AAE8","l":"34633","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":8.839,"ok":true},{"mes":"2025-12","ml":"Dec/2025","p":"AAE8","l":"34684","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":14.309,"ok":false},{"mes":"2025-12","ml":"Dec/2025","p":"AAE8","l":"34724","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":10.843,"ok":true},{"mes":"2025-12","ml":"Dec/2025","p":"AAE8","l":"34734","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":9.698,"ok":true},{"mes":"2025-12","ml":"Dec/2025","p":"AAE8","l":"34759","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":11.807,"ok":true},{"mes":"2025-12","ml":"Dec/2025","p":"AAE8","l":"34773","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":7.616,"ok":false},{"mes":"2025-12","ml":"Dec/2025","p":"AAE8","l":"34775","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":13.85,"ok":false},{"mes":"2025-12","ml":"Dec/2025","p":"AAE8","l":"34786","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":7.616,"ok":false},{"mes":"2025-12","ml":"Dec/2025","p":"AAE8","l":"34829","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":9.292,"ok":true},{"mes":"2025-12","ml":"Dec/2025","p":"AAE8","l":"34839","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":15.792,"ok":false},{"mes":"2025-12","ml":"Dec/2025","p":"AAE8","l":"34839","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":12.623,"ok":false},{"mes":"2025-12","ml":"Dec/2025","p":"AAE8","l":"34840","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":13.088,"ok":false},{"mes":"2025-12","ml":"Dec/2025","p":"AAE8","l":"34890","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":10.537,"ok":true},{"mes":"2025-12","ml":"Dec/2025","p":"AAE8","l":"34891","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":12.377,"ok":false},{"mes":"2025-12","ml":"Dec/2025","p":"AAE8","l":"34962","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":13.223,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"AAE8","l":"34927","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":8.338,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAE8","l":"34928","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":9.451,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAE8","l":"34998","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":8.543,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAE8","l":"35001","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":11.641,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAE8","l":"35005","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":10.07,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAE8","l":"35032","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":10.887,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAE8","l":"35036","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":9.259,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAE8","l":"35099","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":12.033,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"AAE8","l":"35112","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":12.572,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"AAE8","l":"35138","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":12.556,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"AAE8","l":"35243","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":13.873,"ok":false},{"mes":"2026-02","ml":"Feb/2026","p":"AAE8","l":"34980","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":8.982,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAE8","l":"35242","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":12.115,"ok":false},{"mes":"2026-02","ml":"Feb/2026","p":"AAE8","l":"35293","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":10.964,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAE8","l":"35348","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":11.482,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAE8","l":"35359","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":10.725,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAE8","l":"35391","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":10.353,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAE8","l":"35392","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":14.734,"ok":false},{"mes":"2026-02","ml":"Feb/2026","p":"AAE8","l":"35489","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":10.29,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAE8","l":"35514","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":12.207,"ok":false},{"mes":"2026-02","ml":"Feb/2026","p":"AAE8","l":"35552","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":9.067,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAE8","l":"35568","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":11.805,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAE8","l":"35579","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":7.828,"ok":false},{"mes":"2026-02","ml":"Feb/2026","p":"AAE8","l":"35587","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":11.099,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAE8","l":"35618","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":9.984,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAE8","l":"35639","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":9.984,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAE8","l":"35655","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":11.099,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAE8","l":"35668","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":13.523,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"AAE8","l":"35668","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":11.024,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAE8","l":"35713","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":11.39,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAE8","l":"35713","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":19.165,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"AAE8","l":"35714","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":12.692,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"AAE8","l":"35770","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":12.594,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"AAE8","l":"35792","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":11.257,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAE8","l":"35824","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":9.153,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAE8","l":"35871","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":8.052,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAE8","l":"35889","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":11.287,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAE8","l":"35909","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":15.291,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"AAE8","l":"35911","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":5.334,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"AAE8","l":"35921","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":11.375,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAE8","l":"35948","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":11.548,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAE8","l":"35959","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":11.29,"ok":true},{"mes":"2026-04","ml":"Apr/2026","p":"AAE8","l":"35075","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":12.178,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"AAE8","l":"35964","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":8.424,"ok":true},{"mes":"2026-04","ml":"Apr/2026","p":"AAE8","l":"35992","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":10.565,"ok":true},{"mes":"2026-04","ml":"Apr/2026","p":"AAE8","l":"36020","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":12.831,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"AAE8","l":"36021","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":11.962,"ok":true},{"mes":"2026-04","ml":"Apr/2026","p":"AAE8","l":"36063","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":11.63,"ok":true},{"mes":"2026-04","ml":"Apr/2026","p":"AAE8","l":"36064","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":11.042,"ok":true},{"mes":"2026-04","ml":"Apr/2026","p":"AAE8","l":"36100","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":14.28,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"AAE8","l":"36101","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":12.327,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"AAE8","l":"36102","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":13.69,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"AAE8","l":"36142","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":13.429,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"AAE8","l":"36142","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":10.621,"ok":true},{"mes":"2026-04","ml":"Apr/2026","p":"AAE8","l":"36143","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":9.107,"ok":true},{"mes":"2026-04","ml":"Apr/2026","p":"AAE8","l":"36184","id":28,"t":"Compressão (MPa)","mn":8.0,"mx":12,"r":13.481,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"AAEE","l":"35223","id":28,"t":"Compressão (MPa)","mn":20.0,"mx":24,"r":24.689,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"AAEE","l":"35269","id":28,"t":"Compressão (MPa)","mn":20.0,"mx":24,"r":22.496,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAEE","l":"35864","id":28,"t":"Compressão (MPa)","mn":20.0,"mx":24,"r":22.639,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAEE","l":"35895","id":28,"t":"Compressão (MPa)","mn":20.0,"mx":24,"r":21.994,"ok":true},{"mes":"2026-04","ml":"Apr/2026","p":"AAEE","l":"36040","id":28,"t":"Compressão (MPa)","mn":20.0,"mx":24,"r":24.582,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"AAEE","l":"36070","id":28,"t":"Compressão (MPa)","mn":20.0,"mx":24,"r":28.346,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"AAEE","l":"36070","id":28,"t":"Compressão (MPa)","mn":20.0,"mx":24,"r":21.24,"ok":true},{"mes":"2026-04","ml":"Apr/2026","p":"AAEE","l":"Lab T01","id":28,"t":"Compressão (MPa)","mn":20.0,"mx":24,"r":19.863,"ok":false},{"mes":"2025-04","ml":"Apr/2025","p":"AAV e AAF","l":"31472","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":4.208,"ok":true},{"mes":"2025-04","ml":"Apr/2025","p":"AAV e AAF","l":"31500","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.695,"ok":true},{"mes":"2025-04","ml":"Apr/2025","p":"AAV e AAF","l":"31561","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":4.175,"ok":true},{"mes":"2025-04","ml":"Apr/2025","p":"AAV e AAF","l":"31587","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":4.603,"ok":true},{"mes":"2025-04","ml":"Apr/2025","p":"AAV e AAF","l":"31615","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.075,"ok":true},{"mes":"2025-04","ml":"Apr/2025","p":"AAV e AAF","l":"31656","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.71,"ok":true},{"mes":"2025-06","ml":"Jun/2025","p":"AAV e AAF","l":"32472","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.89,"ok":true},{"mes":"2025-06","ml":"Jun/2025","p":"AAV e AAF","l":"32591","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.597,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAV e AAF","l":"32337","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.326,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAV e AAF","l":"32617","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.235,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAV e AAF","l":"32631","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.235,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAV e AAF","l":"32643","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.783,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAV e AAF","l":"32676","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.52,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAV e AAF","l":"32743","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":4.32,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAV e AAF","l":"32745","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.911,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAV e AAF","l":"32763","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":5.53,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAV e AAF","l":"32790","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.991,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAV e AAF","l":"32874","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.68,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAV e AAF","l":"32875","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":6.531,"ok":false},{"mes":"2025-07","ml":"Jul/2025","p":"AAV e AAF","l":"32876","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.091,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAV e AAF","l":"32896","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.875,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAV e AAF","l":"32896","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.794,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAV e AAF","l":"32897","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":4.428,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAV e AAF","l":"32900","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.274,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAV e AAF","l":"32945","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.087,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAV e AAF","l":"32948","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":4.148,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAV e AAF","l":"32960","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":4.058,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAV e AAF","l":"32974","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.798,"ok":true},{"mes":"2025-07","ml":"Jul/2025","p":"AAV e AAF","l":"32983","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.653,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAV e AAF","l":"32997","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.983,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAV e AAF","l":"33022","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.077,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAV e AAF","l":"33023","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.537,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAV e AAF","l":"33024","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.407,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAV e AAF","l":"33063","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.665,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAV e AAF","l":"33091","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":1.635,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAV e AAF","l":"33107","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":4.128,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAV e AAF","l":"33126","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":1.908,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAV e AAF","l":"33127","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.815,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAV e AAF","l":"33163","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.632,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAV e AAF","l":"33164","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":4.403,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAV e AAF","l":"33187","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.463,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAV e AAF","l":"33199","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.784,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAV e AAF","l":"33214","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.895,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAV e AAF","l":"33216","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.507,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAV e AAF","l":"33271","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.009,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAV e AAF","l":"33272","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":1.904,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAV e AAF","l":"33273","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.042,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAV e AAF","l":"33322","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.138,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAV e AAF","l":"33323","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.96,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAV e AAF","l":"33342","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.578,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAV e AAF","l":"33366","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.756,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"AAV e AAF","l":"33395","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.785,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAV e AAF","l":"33423","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.014,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAV e AAF","l":"33424","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.555,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAV e AAF","l":"33452","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.787,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAV e AAF","l":"33466","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":5.705,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAV e AAF","l":"33466","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.674,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAV e AAF","l":"33466","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.052,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAV e AAF","l":"33535","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.217,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAV e AAF","l":"33551","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.617,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAV e AAF","l":"33580","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":5.896,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAV e AAF","l":"33634","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.709,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAV e AAF","l":"33648","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":4.93,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAV e AAF","l":"33666","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.024,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAV e AAF","l":"33694","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.988,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAV e AAF","l":"33695","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.85,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAV e AAF","l":"33714","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":6.206,"ok":false},{"mes":"2025-09","ml":"Sep/2025","p":"AAV e AAF","l":"33714","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.899,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAV e AAF","l":"33726","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.568,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAV e AAF","l":"33738","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.999,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAV e AAF","l":"33747","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":4.284,"ok":true},{"mes":"2025-09","ml":"Sep/2025","p":"AAV e AAF","l":"33818","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.332,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAV e AAF","l":"33739","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":1.948,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAV e AAF","l":"33837","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":4.836,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAV e AAF","l":"33837","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.74,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAV e AAF","l":"33838","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.153,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAV e AAF","l":"33866","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.711,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAV e AAF","l":"33916","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.709,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAV e AAF","l":"33917","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":1.974,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAV e AAF","l":"33978","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.171,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAV e AAF","l":"34001","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.962,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAV e AAF","l":"34025","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":4.053,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAV e AAF","l":"34049","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.006,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAV e AAF","l":"34100","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.904,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAV e AAF","l":"34101","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.276,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAV e AAF","l":"34102","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.606,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAV e AAF","l":"34142","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":1.547,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAV e AAF","l":"34172","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.534,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAV e AAF","l":"34205","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.471,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAV e AAF","l":"34226","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":4.433,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAV e AAF","l":"34248","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":4.142,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"AAV e AAF","l":"34277","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.576,"ok":true},{"mes":"2025-11","ml":"Nov/2025","p":"AAV e AAF","l":"34272","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":4.265,"ok":true},{"mes":"2025-11","ml":"Nov/2025","p":"AAV e AAF","l":"34292","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.939,"ok":true},{"mes":"2025-11","ml":"Nov/2025","p":"AAV e AAF","l":"34342","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.697,"ok":true},{"mes":"2025-11","ml":"Nov/2025","p":"AAV e AAF","l":"34410","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":4.435,"ok":true},{"mes":"2025-11","ml":"Nov/2025","p":"AAV e AAF","l":"34420","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":8.97,"ok":false},{"mes":"2025-11","ml":"Nov/2025","p":"AAV e AAF","l":"34421","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":4.095,"ok":true},{"mes":"2025-11","ml":"Nov/2025","p":"AAV e AAF","l":"34460","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.658,"ok":true},{"mes":"2025-11","ml":"Nov/2025","p":"AAV e AAF","l":"34479","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":4.385,"ok":true},{"mes":"2025-11","ml":"Nov/2025","p":"AAV e AAF","l":"34558","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":5.088,"ok":true},{"mes":"2025-11","ml":"Nov/2025","p":"AAV e AAF","l":"34585","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.718,"ok":true},{"mes":"2025-11","ml":"Nov/2025","p":"AAV e AAF","l":"34608","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.798,"ok":true},{"mes":"2025-12","ml":"Dec/2025","p":"AAV e AAF","l":"34752","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.372,"ok":true},{"mes":"2025-12","ml":"Dec/2025","p":"AAV e AAF","l":"34761","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.335,"ok":true},{"mes":"2025-12","ml":"Dec/2025","p":"AAV e AAF","l":"34762","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.299,"ok":true},{"mes":"2025-12","ml":"Dec/2025","p":"AAV e AAF","l":"34790","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.123,"ok":true},{"mes":"2025-12","ml":"Dec/2025","p":"AAV e AAF","l":"34801","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.123,"ok":true},{"mes":"2025-12","ml":"Dec/2025","p":"AAV e AAF","l":"34805","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.141,"ok":true},{"mes":"2025-12","ml":"Dec/2025","p":"AAV e AAF","l":"34811","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.082,"ok":true},{"mes":"2025-12","ml":"Dec/2025","p":"AAV e AAF","l":"34820","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.216,"ok":true},{"mes":"2025-12","ml":"Dec/2025","p":"AAV e AAF","l":"34843","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.519,"ok":true},{"mes":"2025-12","ml":"Dec/2025","p":"AAV e AAF","l":"34844","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.374,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAV e AAF","l":"34948","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.001,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAV e AAF","l":"34950","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.326,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAV e AAF","l":"34951","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.087,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAV e AAF","l":"34972","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.466,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAV e AAF","l":"35040","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":4.118,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAV e AAF","l":"35081","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":1.863,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAV e AAF","l":"35082","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.87,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAV e AAF","l":"35091","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":4.113,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAV e AAF","l":"35092","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.391,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAV e AAF","l":"35115","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.5,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAV e AAF","l":"35140","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.855,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAV e AAF","l":"35141","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.203,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAV e AAF","l":"35166","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.843,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAV e AAF","l":"35167","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.801,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAV e AAF","l":"35183","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":4.89,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAV e AAF","l":"35240","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.206,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAV e AAF","l":"35241","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.889,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAV e AAF","l":"35261","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.883,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAV e AAF","l":"35287","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.6,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAV e AAF","l":"35330","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.026,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"AAV e AAF","l":"35339","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.737,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAV e AAF","l":"35327","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.98,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAV e AAF","l":"35328","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":1.92,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAV e AAF","l":"35349","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.08,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAV e AAF","l":"35350","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.204,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAV e AAF","l":"35351","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.955,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAV e AAF","l":"35367","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.639,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAV e AAF","l":"35368","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.639,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAV e AAF","l":"35370","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":4.09,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAV e AAF","l":"35371","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.611,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAV e AAF","l":"35396","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.037,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAV e AAF","l":"35425","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.602,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAV e AAF","l":"35426","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":11.815,"ok":false},{"mes":"2026-02","ml":"Feb/2026","p":"AAV e AAF","l":"35474","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.532,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAV e AAF","l":"35516","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.198,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAV e AAF","l":"35534","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.524,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAV e AAF","l":"35540","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.473,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAV e AAF","l":"35569","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.358,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAV e AAF","l":"35570","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.982,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAV e AAF","l":"35589","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.799,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAV e AAF","l":"35610","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.799,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAV e AAF","l":"35628","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.847,"ok":true},{"mes":"2026-02","ml":"Feb/2026","p":"AAV e AAF","l":"35670","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.635,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAV e AAF","l":"35651","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.874,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAV e AAF","l":"35685","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.695,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAV e AAF","l":"35795","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.465,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAV e AAF","l":"35828","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.329,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAV e AAF","l":"35851","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.09,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAV e AAF","l":"35851","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":4.368,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAV e AAF","l":"35873","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.995,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAV e AAF","l":"35874","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.771,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAV e AAF","l":"35938","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.198,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"AAV e AAF","l":"35940","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.383,"ok":true},{"mes":"2026-04","ml":"Apr/2026","p":"AAV e AAF","l":"35967","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.714,"ok":true},{"mes":"2026-04","ml":"Apr/2026","p":"AAV e AAF","l":"36014","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.992,"ok":true},{"mes":"2026-04","ml":"Apr/2026","p":"AAV e AAF","l":"36032","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.546,"ok":true},{"mes":"2026-04","ml":"Apr/2026","p":"AAV e AAF","l":"36054","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":3.732,"ok":true},{"mes":"2026-04","ml":"Apr/2026","p":"AAV e AAF","l":"36079","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.625,"ok":true},{"mes":"2026-04","ml":"Apr/2026","p":"AAV e AAF","l":"36152","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":13.545,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"AAV e AAF","l":"36154","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":4.364,"ok":true},{"mes":"2026-04","ml":"Apr/2026","p":"AAV e AAF","l":"36193","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.368,"ok":true},{"mes":"2026-04","ml":"Apr/2026","p":"AAV e AAF","l":"36198","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.469,"ok":true},{"mes":"2026-04","ml":"Apr/2026","p":"AAV e AAF","l":"36229","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":1.543,"ok":true},{"mes":"2026-04","ml":"Apr/2026","p":"AAV e AAF","l":"36299","id":28,"t":"Compressão (MPa)","mn":1.5,"mx":6,"r":2.533,"ok":true},{"mes":"2025-08","ml":"Aug/2025","p":"Contrapiso","l":"33309","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":21.927,"ok":false},{"mes":"2025-08","ml":"Aug/2025","p":"Contrapiso","l":"33347","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":21.368,"ok":false},{"mes":"2025-08","ml":"Aug/2025","p":"Contrapiso","l":"33374","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":21.766,"ok":false},{"mes":"2025-08","ml":"Aug/2025","p":"Contrapiso","l":"33398","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":27.076,"ok":false},{"mes":"2025-09","ml":"Sep/2025","p":"Contrapiso","l":"33377","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":20.631,"ok":false},{"mes":"2025-09","ml":"Sep/2025","p":"Contrapiso","l":"33446","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":20.79,"ok":false},{"mes":"2025-09","ml":"Sep/2025","p":"Contrapiso","l":"33472","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":19.734,"ok":false},{"mes":"2025-09","ml":"Sep/2025","p":"Contrapiso","l":"33528","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":17.673,"ok":false},{"mes":"2025-09","ml":"Sep/2025","p":"Contrapiso","l":"33650","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":18.452,"ok":false},{"mes":"2025-09","ml":"Sep/2025","p":"Contrapiso","l":"33699","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":19.186,"ok":false},{"mes":"2025-09","ml":"Sep/2025","p":"Contrapiso","l":"33732","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":17.94,"ok":false},{"mes":"2025-09","ml":"Sep/2025","p":"Contrapiso","l":"33743","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":23.628,"ok":false},{"mes":"2025-10","ml":"Oct/2025","p":"Contrapiso","l":"33751","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":13.259,"ok":true},{"mes":"2025-10","ml":"Oct/2025","p":"Contrapiso","l":"33902","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":15.763,"ok":false},{"mes":"2025-10","ml":"Oct/2025","p":"Contrapiso","l":"34009","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":14.923,"ok":false},{"mes":"2025-10","ml":"Oct/2025","p":"Contrapiso","l":"34033","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":16.22,"ok":false},{"mes":"2025-10","ml":"Oct/2025","p":"Contrapiso","l":"34034","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":17.225,"ok":false},{"mes":"2025-10","ml":"Oct/2025","p":"Contrapiso","l":"34035","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":21.459,"ok":false},{"mes":"2025-10","ml":"Oct/2025","p":"Contrapiso","l":"34063","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":19.492,"ok":false},{"mes":"2025-10","ml":"Oct/2025","p":"Contrapiso","l":"34124","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":18.489,"ok":false},{"mes":"2025-10","ml":"Oct/2025","p":"Contrapiso","l":"34125","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":22.562,"ok":false},{"mes":"2025-10","ml":"Oct/2025","p":"Contrapiso","l":"34126","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":20.072,"ok":false},{"mes":"2025-10","ml":"Oct/2025","p":"Contrapiso","l":"34190","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":24.418,"ok":false},{"mes":"2025-10","ml":"Oct/2025","p":"Contrapiso","l":"34257","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":18.928,"ok":false},{"mes":"2025-10","ml":"Oct/2025","p":"Contrapiso","l":"34283","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":18.203,"ok":false},{"mes":"2025-11","ml":"Nov/2025","p":"Contrapiso","l":"34425","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":17.607,"ok":false},{"mes":"2025-11","ml":"Nov/2025","p":"Contrapiso","l":"34448","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":17.938,"ok":false},{"mes":"2025-11","ml":"Nov/2025","p":"Contrapiso","l":"34527","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":18.289,"ok":false},{"mes":"2025-11","ml":"Nov/2025","p":"Contrapiso","l":"34528","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":21.234,"ok":false},{"mes":"2025-11","ml":"Nov/2025","p":"Contrapiso","l":"34542","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":16.722,"ok":false},{"mes":"2025-11","ml":"Nov/2025","p":"Contrapiso","l":"34560","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":15.87,"ok":false},{"mes":"2025-11","ml":"Nov/2025","p":"Contrapiso","l":"34591","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":19.489,"ok":false},{"mes":"2025-12","ml":"Dec/2025","p":"Contrapiso","l":"34562","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":8.476,"ok":false},{"mes":"2025-12","ml":"Dec/2025","p":"Contrapiso","l":"34654","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":16.96,"ok":false},{"mes":"2025-12","ml":"Dec/2025","p":"Contrapiso","l":"34697","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":22.073,"ok":false},{"mes":"2025-12","ml":"Dec/2025","p":"Contrapiso","l":"34707","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":18.753,"ok":false},{"mes":"2025-12","ml":"Dec/2025","p":"Contrapiso","l":"34721","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":16.244,"ok":false},{"mes":"2025-12","ml":"Dec/2025","p":"Contrapiso","l":"34815","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":12.463,"ok":true},{"mes":"2025-12","ml":"Dec/2025","p":"Contrapiso","l":"34875","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":17.445,"ok":false},{"mes":"2025-12","ml":"Dec/2025","p":"Contrapiso","l":"34899","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":18.788,"ok":false},{"mes":"2025-12","ml":"Dec/2025","p":"Contrapiso","l":"34900","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":20.493,"ok":false},{"mes":"2025-12","ml":"Dec/2025","p":"Contrapiso","l":"34901","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":19.886,"ok":false},{"mes":"2025-12","ml":"Dec/2025","p":"Contrapiso","l":"34915","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":16.925,"ok":false},{"mes":"2025-12","ml":"Dec/2025","p":"Contrapiso","l":"34917","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":14.768,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"Contrapiso","l":"34937","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":17.333,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"Contrapiso","l":"34955","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":17.73,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"Contrapiso","l":"34975","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":17.694,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"Contrapiso","l":"34976","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":18.963,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"Contrapiso","l":"35028","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":17.751,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"Contrapiso","l":"35088","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":16.232,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"Contrapiso","l":"35089","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":18.274,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"Contrapiso","l":"35120","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":12.986,"ok":true},{"mes":"2026-01","ml":"Jan/2026","p":"Contrapiso","l":"35121","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":17.501,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"Contrapiso","l":"35146","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":18.215,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"Contrapiso","l":"35171","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":3.718,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"Contrapiso","l":"35178","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":17.382,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"Contrapiso","l":"35190","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":19.105,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"Contrapiso","l":"35191","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":19.538,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"Contrapiso","l":"35192","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":17.566,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"Contrapiso","l":"35220","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":15.548,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"Contrapiso","l":"35221","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":15.751,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"Contrapiso","l":"35237","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":19.308,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"Contrapiso","l":"35238","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":17.734,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"Contrapiso","l":"35280","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":21.035,"ok":false},{"mes":"2026-01","ml":"Jan/2026","p":"Contrapiso","l":"35281","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":15.681,"ok":false},{"mes":"2026-02","ml":"Feb/2026","p":"Contrapiso","l":"35324","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":19.19,"ok":false},{"mes":"2026-02","ml":"Feb/2026","p":"Contrapiso","l":"35325","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":15.303,"ok":false},{"mes":"2026-02","ml":"Feb/2026","p":"Contrapiso","l":"35328","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":17.143,"ok":false},{"mes":"2026-02","ml":"Feb/2026","p":"Contrapiso","l":"35374","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":16.821,"ok":false},{"mes":"2026-02","ml":"Feb/2026","p":"Contrapiso","l":"35400","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":17.808,"ok":false},{"mes":"2026-02","ml":"Feb/2026","p":"Contrapiso","l":"35443","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":16.337,"ok":false},{"mes":"2026-02","ml":"Feb/2026","p":"Contrapiso","l":"35457","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":9.181,"ok":false},{"mes":"2026-02","ml":"Feb/2026","p":"Contrapiso","l":"35482","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":19.402,"ok":false},{"mes":"2026-02","ml":"Feb/2026","p":"Contrapiso","l":"35510","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":17.808,"ok":false},{"mes":"2026-02","ml":"Feb/2026","p":"Contrapiso","l":"35524","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":14.698,"ok":false},{"mes":"2026-02","ml":"Feb/2026","p":"Contrapiso","l":"35525","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":15.829,"ok":false},{"mes":"2026-02","ml":"Feb/2026","p":"Contrapiso","l":"35548","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":20.153,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"Contrapiso","l":"33836","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":13.245,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"Contrapiso","l":"35278","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":12.428,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"Contrapiso","l":"35459","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":14.089,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"Contrapiso","l":"35547","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":15.223,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"Contrapiso","l":"35615","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":15.922,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"Contrapiso","l":"35636","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":22.548,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"Contrapiso","l":"35637","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":12.637,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"Contrapiso","l":"35653","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":21.02,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"Contrapiso","l":"35678","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":19.136,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"Contrapiso","l":"35679","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":21.261,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"Contrapiso","l":"35702","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":19.489,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"Contrapiso","l":"35703","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":13.853,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"Contrapiso","l":"35704","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":15.718,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"Contrapiso","l":"35707","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":13.711,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"Contrapiso","l":"35732","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":7.852,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"Contrapiso","l":"35783","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":15.339,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"Contrapiso","l":"35785","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":13.799,"ok":true},{"mes":"2026-03","ml":"Mar/2026","p":"Contrapiso","l":"35833","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":19.01,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"Contrapiso","l":"35879","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":14.989,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"Contrapiso","l":"35880","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":15.249,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"Contrapiso","l":"35947","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":14.415,"ok":false},{"mes":"2026-03","ml":"Mar/2026","p":"Contrapiso","l":"35978","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":16.184,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"Contrapiso","l":"35977","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":14.053,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"Contrapiso","l":"35979","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":17.114,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"Contrapiso","l":"35999","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":16.071,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"Contrapiso","l":"36009","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":13.986,"ok":true},{"mes":"2026-04","ml":"Apr/2026","p":"Contrapiso","l":"36010","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":16.426,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"Contrapiso","l":"36118","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":17.274,"ok":false},{"mes":"2026-04","ml":"Apr/2026","p":"Contrapiso","l":"36135","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":13.385,"ok":true},{"mes":"2026-04","ml":"Apr/2026","p":"Contrapiso","l":"36204","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":10.849,"ok":true},{"mes":"2026-04","ml":"Apr/2026","p":"Contrapiso","l":"36255","id":28,"t":"Compressão (MPa)","mn":10.0,"mx":14,"r":10.3,"ok":true}];
+// Limpar chaves antigas de versões anteriores que causavam conflito
+try { localStorage.removeItem('bv_data'); } catch(e) {}
+
+let EXTRAS = [];
+let MESES_SYNC = new Set();
+let DATA = [...SEED];
+
+// ── Carregar do localStorage (fallback offline) ──
+function loadFromLocalStorage() {
+  try { const e = localStorage.getItem('bv_extras'); EXTRAS = e ? JSON.parse(e) : []; } catch(e) { EXTRAS = []; }
+  try { const ms = localStorage.getItem('bv_meses_sync'); MESES_SYNC = ms ? new Set(JSON.parse(ms)) : new Set(); } catch(e) { MESES_SYNC = new Set(); }
+  DATA = [...SEED.filter(r => !MESES_SYNC.has(r.mes)), ...EXTRAS];
+}
+
+// ── Salvar no localStorage (cache local) ──
+const saveLocalStorage = () => {
+  try { localStorage.setItem('bv_extras', JSON.stringify(EXTRAS)); } catch(e) {}
+  try { localStorage.setItem('bv_meses_sync', JSON.stringify([...MESES_SYNC])); } catch(e) {}
+};
+
+// ── Salvar no Supabase ──
+async function saveToSupabase(registros, mesesSync) {
+  if (SB_MODE !== 'online') return;
+  try {
+    // Limpar tabela e reinserir tudo (upsert por id único)
+    // Usar DELETE + INSERT para garantir dados sempre atualizados
+    await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?id=gte.0`, {
+      method: 'DELETE', headers: sbHeaders()
+    });
+    if (registros.length > 0) {
+      // Inserir em lotes de 500
+      for (let i = 0; i < registros.length; i += 500) {
+        const lote = registros.slice(i, i+500).map((r,j) => ({...r, id: i+j}));
+        await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}`, {
+          method: 'POST', headers: sbHeaders(), body: JSON.stringify(lote)
+        });
+      }
+    }
+    // Salvar meses_sync em tabela de config
+    await fetch(`${SUPABASE_URL}/rest/v1/config?chave=eq.meses_sync`, {
+      method: 'DELETE', headers: sbHeaders()
+    });
+    await fetch(`${SUPABASE_URL}/rest/v1/config`, {
+      method: 'POST', headers: sbHeaders(),
+      body: JSON.stringify({chave:'meses_sync', valor: JSON.stringify([...mesesSync])})
+    });
+  } catch(err) {
+    console.warn('Supabase save error:', err);
+  }
+}
+
+// ── Carregar do Supabase ──
+async function loadFromSupabase() {
+  if (SB_MODE !== 'online') { loadFromLocalStorage(); return; }
+  showSyncStatus('Carregando dados...');
+  try {
+    // Buscar registros
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?select=*&order=mes.asc&limit=10000`,
+      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }
+    );
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const rows = await res.json();
+
+    // Buscar meses_sync
+    const res2 = await fetch(
+      `${SUPABASE_URL}/rest/v1/config?chave=eq.meses_sync&select=valor`,
+      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }
+    );
+    const cfg = await res2.json();
+    const mesesArr = cfg.length ? JSON.parse(cfg[0].valor) : [];
+
+    EXTRAS = rows.map(r => { const {id,...rest}=r; return rest; });
+    MESES_SYNC = new Set(mesesArr);
+    DATA = [...SEED.filter(r => !MESES_SYNC.has(r.mes)), ...EXTRAS];
+
+    // Cache local
+    saveLocalStorage();
+    hideSyncStatus();
+    initSel(); render();
+  } catch(err) {
+    console.warn('Supabase load error — usando cache local:', err);
+    loadFromLocalStorage();
+    hideSyncStatus();
+    initSel(); render();
+  }
+}
+
+// ── saveExtras: salva em ambos ──
+const saveExtras = () => {
+  saveLocalStorage();
+  saveToSupabase(EXTRAS, MESES_SYNC);
+};
+
+// Carregar dados inicialmente
+loadFromLocalStorage(); // imediato (cache)
+
+// ══ HELPERS ══
+// Status detalhado: ok | low (abaixo do mín) | high (acima do máx)
+const statusOf = d => d.r >= d.mn && d.r <= d.mx ? 'ok' : d.r < d.mn ? 'low' : 'high';
+const statusLabel = s => s==='ok' ? 'Aprovado' : s==='low' ? 'Rep. Abaixo' : 'Rep. Acima';
+const statusClass = s => s==='ok' ? 'bvok' : s==='low' ? 'bvlow' : 'bver';
+const statusValClass = s => s==='ok' ? 'vok' : s==='low' ? 'vlow' : 'ver';
+const statusColor = s => s==='ok' ? '#2ecc71' : s==='low' ? '#e67e22' : '#e74c3c';
+const uniq = (arr, fn) => [...new Set(arr.map(fn))].sort();
+const prods = () => uniq(DATA, d => d.p);
+const mesList = () => uniq(DATA, d => d.mes);
+const anosList = () => uniq(DATA, d => d.mes.slice(0,4));
+const mlOf = m => { const d = DATA.find(r => r.mes === m); return d ? d.ml : m; };
+const fmtMes = mes => {
+  const dt = new Date(mes + '-02');
+  return dt.toLocaleDateString('pt-BR',{month:'short',year:'numeric'}).replace('. ','/').replace(/^./,c=>c.toUpperCase());
+};
+const limitsOf = p => { const d = DATA.find(r => r.p === p); return d ? {mn:d.mn, mx:d.mx} : null; };
+
+function getF() {
+  const anoEl = document.getElementById('sAno');
+  return {
+    p: document.getElementById('sProd').value,
+    meses: getSelectedMeses(),
+    a: anoEl ? anoEl.value : 'T'
+  };
+}
+function fd() {
+  const {p,meses,a} = getF();
+  return DATA.filter(d=>
+    (p==='T'||d.p===p) &&
+    (a==='T'||d.mes.startsWith(a)) &&
+    (meses.length===0||meses.includes(d.mes))
+  ).sort((x,y)=>x.mes.localeCompare(y.mes)||x.l.localeCompare(y.l));
+}
+
+// ══ PUSH & SAVE ══
+function pushRegistros(novos) {
+  novos.forEach(n => { n._manual=true; EXTRAS.push(n); DATA.push(n); });
+  saveExtras();
+  initSel(); render(); rTable();
+  updSess();
+}
+
+// ══ SELECTS ══
+function initSel() {
+  function pop(id, items, al, av) {
+    const el = document.getElementById(id); const cur = el.value;
+    el.innerHTML = `<option value="${av}">${al}</option>`;
+    items.forEach(v => { const o=document.createElement('option'); o.value=v; o.textContent=v; el.appendChild(o); });
+    if ([...el.options].some(o=>o.value===cur)) el.value=cur;
+  }
+  pop('sProd',prods(),'Todos os produtos','T');
+  pop('sAno',anosList(),'Todos os anos','T');
+  // Popular multi-select de meses
+  buildMsItems();
+  const fP=document.getElementById('fP');
+  fP.innerHTML='<option value="">— selecione —</option>';
+  prods().forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;fP.appendChild(o);});
+  const tP=document.getElementById('tP');
+  tP.innerHTML='<option value="T">Todos os produtos</option>';
+  prods().forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;tP.appendChild(o);});
+  rebuildBatchSelects();
+}
+
+// ══ CHARTS ══
+const charts={};
+const dc=id=>{if(charts[id]){charts[id].destroy();delete charts[id];}};
+const GC={grid:'rgba(255,255,255,.055)',tick:'#555'};
+
+function render() {
+  const data=fd(); const p=getF().p;
+  const n=data.length,a=data.filter(d=>d.ok).length;
+  const rLow=data.filter(d=>statusOf(d)==='low').length;
+  const rHigh=data.filter(d=>statusOf(d)==='high').length;
+  const pct=n?a/n:0,med=n?data.reduce((s,d)=>s+d.r,0)/n:0;
+  const pctFora = n ? (rLow+rHigh)/n : 0;
+  document.getElementById('kN').textContent=n;
+  document.getElementById('kA').textContent=a;
+  document.getElementById('kRL').textContent=rLow;
+  document.getElementById('kRH').textContent=rHigh;
+  document.getElementById('kP').textContent=(pct*100).toFixed(1)+'%';
+  document.getElementById('kM').textContent=med.toFixed(2);
+  document.getElementById('kFora').textContent=(pctFora*100).toFixed(1)+'%';
+  const sb=document.getElementById('specBar');
+  if(p!=='T'&&data.length){sb.style.display='flex';document.getElementById('spProd').textContent=p;document.getElementById('spMin').textContent=data[0].mn+' MPa';document.getElementById('spMax').textContent=data[0].mx+' MPa';document.getElementById('spCnt').textContent=n+' ensaios';}
+  else sb.style.display='none';
+  dc('lt');
+  charts['lt']=new Chart(document.getElementById('cLt'),{type:'line',data:{labels:data.map((_,i)=>i+1),datasets:[{label:'Resultado',data:data.map(d=>d.r),borderColor:'#e74c3c',borderWidth:1.8,pointBackgroundColor:data.map(d=>statusColor(statusOf(d))),pointBorderColor:data.map(d=>statusColor(statusOf(d))),pointRadius:data.length>90?2:4,tension:0,fill:false},{label:'Lim.Min',data:data.map(d=>d.mn),borderColor:'rgba(39,174,96,.55)',borderWidth:1.5,borderDash:[6,4],pointRadius:0,fill:false},{label:'Lim.Max',data:data.map(d=>d.mx),borderColor:'rgba(192,57,43,.55)',borderWidth:1.5,borderDash:[6,4],pointRadius:0,fill:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{title:ctx=>{const d=data[ctx[0].dataIndex];return `Lote ${d.l} · ${d.ml}`;},label:ctx=>`${ctx.dataset.label}: ${ctx.parsed.y.toFixed(3)} MPa`}}},scales:{x:{ticks:{color:GC.tick,font:{size:10}},grid:{color:GC.grid}},y:{ticks:{color:GC.tick,font:{size:10}},grid:{color:GC.grid}}}}});
+  const bm={};data.forEach(d=>{if(!bm[d.mes])bm[d.mes]={l:d.ml,n:0,a:0,s:0,mn:d.mn,mx:d.mx,low:0,high:0};const _st=statusOf(d);bm[d.mes].n++;bm[d.mes].a+=d.ok?1:0;bm[d.mes].s+=d.r;if(_st==='low')bm[d.mes].low++;if(_st==='high')bm[d.mes].high++;});
+  const mk=Object.keys(bm).sort();
+  const mL=mk.map(m=>bm[m].l),mP=mk.map(m=>bm[m].a/bm[m].n*100),mMe=mk.map(m=>bm[m].s/bm[m].n),mMn=mk.map(m=>bm[m].mn),mMx=mk.map(m=>bm[m].mx),mA=mk.map(m=>bm[m].a),mR=mk.map(m=>bm[m].n-bm[m].a);
+  const xO={ticks:{color:GC.tick,font:{size:10},maxRotation:45,autoSkip:true,maxTicksLimit:9},grid:{color:GC.grid}};
+  const yO={ticks:{color:GC.tick,font:{size:10}},grid:{color:GC.grid}};
+  dc('ap');charts['ap']=new Chart(document.getElementById('cAp'),{type:'bar',data:{labels:mL,datasets:[{label:'%',data:mP,backgroundColor:mP.map(v=>v>=80?'rgba(39,174,96,.72)':v>=50?'rgba(230,126,34,.72)':'rgba(231,76,60,.72)'),borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y.toFixed(1)+'%'}}},scales:{x:xO,y:{...yO,min:0,max:105,ticks:{...yO.ticks,callback:v=>v+'%'}}}}});
+  dc('md');charts['md']=new Chart(document.getElementById('cMd'),{type:'line',data:{labels:mL,datasets:[{label:'Média',data:mMe,borderColor:'#e74c3c',borderWidth:2,pointBackgroundColor:'#e74c3c',pointRadius:5,tension:0,fill:false},{label:'Lim.Min',data:mMn,borderColor:'rgba(39,174,96,.48)',borderWidth:1.5,borderDash:[5,4],pointRadius:0,fill:false},{label:'Lim.Max',data:mMx,borderColor:'rgba(192,57,43,.48)',borderWidth:1.5,borderDash:[5,4],pointRadius:0,fill:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': '+c.parsed.y.toFixed(3)+' MPa'}}},scales:{x:xO,y:yO}}});
+  dc('st');charts['st']=new Chart(document.getElementById('cSt'),{type:'bar',data:{labels:mL,datasets:[{label:'Aprovados',data:mA,backgroundColor:'rgba(39,174,96,.72)',borderWidth:0},{label:'Reprovados',data:mR,backgroundColor:'rgba(231,76,60,.72)',borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,scales:{x:{...xO,stacked:true},y:{...yO,stacked:true}},plugins:{legend:{display:false}}}});
+  dc('pi');charts['pi']=new Chart(document.getElementById('cPi'),{type:'doughnut',data:{labels:['Aprovados','Rep. Abaixo do Mín','Rep. Acima do Máx'],datasets:[{data:[a,rLow,rHigh],backgroundColor:['rgba(39,174,96,.78)','rgba(230,126,34,.78)','rgba(231,76,60,.78)'],borderColor:['#1f1f1f','#1f1f1f','#1f1f1f'],borderWidth:2,hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:false,cutout:'63%',plugins:{legend:{display:true,position:'bottom',labels:{color:'#999',font:{size:11},boxWidth:12,padding:13}},tooltip:{callbacks:{label:c=>`${c.label}: ${c.parsed} (${n?(c.parsed/n*100).toFixed(1):0}%)`}}}}});
+  dc('ac');let ca=0,cn=0;const cp=mk.map(m=>{ca+=bm[m].a;cn+=bm[m].n;return cn?ca/cn*100:0;});charts['ac']=new Chart(document.getElementById('cAc'),{type:'line',data:{labels:mL,datasets:[{label:'%',data:cp,borderColor:'#2980b9',borderWidth:2,pointBackgroundColor:'#2980b9',pointRadius:4,tension:0.1,fill:{target:'origin',above:'rgba(41,128,185,.08)'}}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y.toFixed(1)+'%'}}},scales:{x:xO,y:{...yO,min:0,max:105,ticks:{...yO.ticks,callback:v=>v+'%'}}}}});
+
+  // Gráfico % Fora da Spec — barras empilhadas 100%
+  dc('fora');
+  const mPctAcima  = mk.map(m => bm[m].n ? bm[m].high / bm[m].n * 100 : 0);
+  const mPctAbaixo = mk.map(m => bm[m].n ? (bm[m].low||0) / bm[m].n * 100 : 0);
+  const mPctAprov  = mk.map(m => bm[m].n ? bm[m].a / bm[m].n * 100 : 0);
+  charts['fora'] = new Chart(document.getElementById('cFora'), {
+    type: 'bar',
+    data: { labels: mL, datasets: [
+      { label:'% Acima do Máx',  data: mPctAcima,  backgroundColor: 'rgba(231,76,60,.78)',  borderWidth:0 },
+      { label:'% Abaixo do Mín', data: mPctAbaixo, backgroundColor: 'rgba(230,126,34,.78)', borderWidth:0 },
+      { label:'% Aprovado',      data: mPctAprov,  backgroundColor: 'rgba(39,174,96,.75)',  borderWidth:0 }
+    ]},
+    options: { responsive:true, maintainAspectRatio:false,
+      scales: {
+        x: { ...xO, stacked:true, ticks:{...xO.ticks, maxTicksLimit:50, maxRotation:45, autoSkip:false} },
+        y: { ...yO, stacked:true, min:0, max:100, ticks:{...yO.ticks, callback:v=>v+'%'} }
+      },
+      plugins: {
+        legend: { display:false },
+        tooltip: { callbacks: {
+          label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}%`
+        }}
+      }
+    }
+  });
+}
+
+// ══ IMPORTAR EXCEL / CSV ══
+let importedRows = [], importedCols = [];
+
+function onDragOver(e){e.preventDefault();document.getElementById('dropZone').classList.add('over');}
+function onDragLeave(e){document.getElementById('dropZone').classList.remove('over');}
+function onDrop(e){e.preventDefault();document.getElementById('dropZone').classList.remove('over');const f=e.dataTransfer.files[0];if(f)readFile(f);}
+function onFileSelect(e){const f=e.target.files[0];if(f)readFile(f);}
+
+function readFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      let rows;
+      if (file.name.endsWith('.csv')) {
+        const text = new TextDecoder('utf-8').decode(e.target.result);
+        const lines = text.split('\n').filter(l=>l.trim());
+        const sep = lines[0].includes(';') ? ';' : ',';
+        rows = lines.map(l => l.split(sep).map(c=>c.trim().replace(/^"|"$/g,'')));
+      } else {
+        const wb = XLSX.read(e.target.result, {type:'array', cellDates:true});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+      }
+      rows = rows.filter(r => r.some(c => c !== '' && c !== null && c !== undefined));
+      if (rows.length < 2) { alert('Arquivo vazio ou sem dados suficientes.'); return; }
+      importedCols = rows[0].map(String);
+      importedRows = rows.slice(1);
+      document.getElementById('mapFileName').textContent = file.name;
+      document.getElementById('mapRowCount').textContent = importedRows.length;
+      buildMapSelects(importedCols);
+      document.getElementById('mapSection').style.display = 'block';
+      buildPreview();
+    } catch(err) { alert('Erro ao ler arquivo: ' + err.message); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function buildMapSelects(cols) {
+  const opts = ['— ignorar —', ...cols];
+  const autoMap = {
+    mapMes:   ['mês','mes','month','data','date'],
+    mapProd:  ['produto','product','prod'],
+    mapLote:  ['lote','lot','batch'],
+    mapRes:   ['resultado','result','resistencia','resistência','valor','value','mpa'],
+    mapLmin:  ['mínimo','minimo','lim min','lim. min','min'],
+    mapLmax:  ['máximo','maximo','lim max','lim. max','max'],
+    mapIdade: ['idade','age','dias','days'],
+    mapTipo:  ['tipo','type','ensaio']
+  };
+  Object.keys(autoMap).forEach(id => {
+    const sel = document.getElementById(id);
+    sel.innerHTML = opts.map((o,i)=>`<option value="${i-1}">${o}</option>`).join('');
+    const keywords = autoMap[id];
+    const match = cols.findIndex(c => keywords.some(k => c.toLowerCase().includes(k)));
+    if (match >= 0) sel.value = match;
+    sel.onchange = buildPreview;
+  });
+}
+
+function getMapVal(id, row) {
+  const idx = parseInt(document.getElementById(id).value);
+  return idx >= 0 ? row[idx] : null;
+}
+
+function buildPreview() {
+  const preview = document.getElementById('importPreview');
+  preview.style.display = 'block';
+  const sample = importedRows.slice(0,5);
+  const fields = ['Mês','Produto','Lote','Resultado','Lim.Min','Lim.Max','Idade','Tipo'];
+  const ids = ['mapMes','mapProd','mapLote','mapRes','mapLmin','mapLmax','mapIdade','mapTipo'];
+  let html = '<table style="width:100%;border-collapse:collapse;font-size:11px">';
+  html += '<thead><tr>' + fields.map(f=>`<th style="background:#111;padding:6px 10px;text-align:left;color:#777;white-space:nowrap">${f}</th>`).join('') + '<th style="background:#111;padding:6px 10px;color:#777">Status</th></tr></thead><tbody>';
+  sample.forEach(row => {
+    const mes = getMapVal('mapMes',row); const prod = getMapVal('mapProd',row);
+    const lote = getMapVal('mapLote',row); const res = parseFloat(getMapVal('mapRes',row));
+    const mn = parseFloat(getMapVal('mapLmin',row)); const mx = parseFloat(getMapVal('mapLmax',row));
+    const ok = !isNaN(res)&&!isNaN(mn)&&!isNaN(mx) ? res>=mn&&res<=mx : null;
+    const vals = [mes,prod,lote,isNaN(res)?'':res.toFixed(3),isNaN(mn)?'':mn,isNaN(mx)?'':mx,getMapVal('mapIdade',row)||28,getMapVal('mapTipo',row)||''];
+    html += '<tr>' + vals.map(v=>`<td style="padding:5px 10px;border-bottom:1px solid #161616;color:#aaa;white-space:nowrap">${v??''}</td>`).join('');
+    html += `<td style="padding:5px 10px;border-bottom:1px solid #161616;text-align:center"><span style="font-size:10px;font-weight:700;color:${ok===null?'#555':ok?'#2ecc71':'#e74c3c'}">${ok===null?'—':ok?'✔ OK':'✗ Falha'}</span></td>`;
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  document.getElementById('previewTable').innerHTML = html;
+  document.getElementById('previewInfo').textContent = `${importedRows.length} linhas no total`;
+}
+
+function doImport() {
+  const msg = document.getElementById('importMsg');
+  const novos = []; const erros = [];
+  importedRows.forEach((row, i) => {
+    const mesRaw = getMapVal('mapMes', row);
+    const prod   = String(getMapVal('mapProd', row)||'').trim();
+    const lote   = String(getMapVal('mapLote', row)||'').trim();
+    const res    = parseFloat(getMapVal('mapRes', row));
+    let mn = parseFloat(getMapVal('mapLmin', row));
+    let mx = parseFloat(getMapVal('mapLmax', row));
+    const idade  = parseInt(getMapVal('mapIdade', row)) || 28;
+    const tipo   = String(getMapVal('mapTipo', row)||'Compressão (MPa)').trim();
+    if (!mesRaw||!prod||!lote||isNaN(res)) { erros.push(i+2); return; }
+    // Tentar preencher limites automaticamente pelo produto se não mapeados
+    if ((isNaN(mn)||isNaN(mx))) {
+      const lim = limitsOf(prod);
+      if (lim) { mn=lim.mn; mx=lim.mx; }
+    }
+    if (isNaN(mn)||isNaN(mx)) { erros.push(i+2); return; }
+    // Parsear mês
+    let mes;
+    if (mesRaw instanceof Date) {
+      mes = mesRaw.toISOString().slice(0,7);
+    } else {
+      const s = String(mesRaw).trim();
+      // Tentar yyyy-mm, dd/mm/yyyy, mm/yyyy, etc.
+      let m = s.match(/^(\d{4})[-\/](\d{1,2})/);
+      if (m) mes = `${m[1]}-${m[2].padStart(2,'0')}`;
+      else { m = s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);
+        if (m) mes = `${m[3]}-${m[2].padStart(2,'0')}`;
+        else { m = s.match(/^(\d{1,2})[-\/](\d{4})/);
+          if (m) mes = `${m[2]}-${m[1].padStart(2,'0')}`;
+          else mes = s.slice(0,7); }
+      }
+    }
+    if (!mes||mes.length < 7) { erros.push(i+2); return; }
+    const ml = fmtMes(mes);
+    const ok = res>=mn && res<=mx;
+    novos.push({mes,ml,p:prod,l:lote,id:idade,t:tipo,mn,mx,r:+res.toFixed(3),ok});
+  });
+  if (novos.length === 0) {
+    msg.className='import-msg er'; msg.textContent=`Nenhum registro válido encontrado. Verifique o mapeamento das colunas.`; return;
+  }
+  pushRegistros(novos);
+  sess = [...novos.slice().reverse(), ...sess];
+  msg.className='import-msg ok';
+  msg.textContent='✔ '+novos.length+' registros importados!'+(erros.length?' ('+erros.length+' ignoradas)':'');
+  document.getElementById('mapSection').style.display='none';
+  importedRows=[]; importedCols=[];
+  document.getElementById('fileInput').value='';
+}
+
+function cancelImport() {
+  document.getElementById('mapSection').style.display='none';
+  document.getElementById('importPreview').style.display='none';
+  importedRows=[]; importedCols=[];
+  document.getElementById('fileInput').value='';
+}
+
+// ══ TABELA RÁPIDA (BATCH) ══
+let batchRowId = 0;
+
+function prodOptsHtml() {
+  return '<option value="">—</option>' + prods().map(p=>`<option value="${p}">${p}</option>`).join('');
+}
+function rebuildBatchSelects() {
+  document.querySelectorAll('.bpsel').forEach(sel => {
+    const cur = sel.value;
+    sel.innerHTML = prodOptsHtml();
+    if (cur) sel.value = cur;
+  });
+}
+
+function addBatchRow(vals={}) {
+  const id = batchRowId++;
+  const ps = prodOptsHtml();
+  const tr = document.createElement('tr');
+  tr.id = 'br'+id;
+  tr.innerHTML = `
+    <td><input class="bi" type="month" id="bm${id}" value="${vals.mes||''}"></td>
+    <td><select class="bsel bpsel" id="bp${id}" onchange="onBatchProd(${id})">${ps}</select></td>
+    <td><input class="bi" type="text" id="bl${id}" placeholder="Lote" value="${vals.l||''}"></td>
+    <td><input class="bi" type="number" id="bid${id}" value="${vals.id||28}" min="1" style="width:60px"></td>
+    <td><input class="bi" type="number" id="bmn${id}" step="0.1" placeholder="Mín" value="${vals.mn||''}" oninput="calcBatchStatus(${id})"></td>
+    <td><input class="bi" type="number" id="bmx${id}" step="0.1" placeholder="Máx" value="${vals.mx||''}" oninput="calcBatchStatus(${id})"></td>
+    <td><input class="bi" type="number" id="brs${id}" step="0.001" placeholder="Resultado" value="${vals.r||''}" oninput="calcBatchStatus(${id})" style="font-weight:700"></td>
+    <td class="status-cell" id="bst${id}" style="color:#555">—</td>
+    <td><button class="row-del" onclick="delBatchRow(${id})">✕</button></td>`;
+  document.getElementById('batchBody').appendChild(tr);
+  if (vals.p) { document.getElementById('bp'+id).value = vals.p; onBatchProd(id, false); }
+}
+
+function onBatchProd(id, recalc=true) {
+  const p = document.getElementById('bp'+id).value;
+  const lim = limitsOf(p);
+  if (lim) {
+    document.getElementById('bmn'+id).value = lim.mn;
+    document.getElementById('bmx'+id).value = lim.mx;
+  }
+  if (recalc) calcBatchStatus(id);
+}
+
+function calcBatchStatus(id) {
+  const rs=parseFloat(document.getElementById('brs'+id).value);
+  const mn=parseFloat(document.getElementById('bmn'+id).value);
+  const mx=parseFloat(document.getElementById('bmx'+id).value);
+  const cell=document.getElementById('bst'+id);
+  if (!isNaN(rs)&&!isNaN(mn)&&!isNaN(mx)) {
+    const st=rs>=mn&&rs<=mx?'ok':rs<mn?'low':'high';
+    cell.textContent=st==='ok'?'✔ Aprovado':st==='low'?'✗ Abaixo':'✗ Acima';
+    cell.style.color=statusColor(st);
+  } else { cell.textContent='—'; cell.style.color='#555'; }
+}
+
+function delBatchRow(id) { const el=document.getElementById('br'+id); if(el) el.remove(); }
+
+function saveBatch() {
+  const msg = document.getElementById('batchMsg');
+  const rows = document.querySelectorAll('#batchBody tr');
+  const novos=[]; const erros=[];
+  rows.forEach(tr => {
+    const id = tr.id.replace('br','');
+    const mes=document.getElementById('bm'+id).value;
+    const p=document.getElementById('bp'+id).value;
+    const l=document.getElementById('bl'+id).value.trim();
+    const idade=parseInt(document.getElementById('bid'+id).value)||28;
+    const mn=parseFloat(document.getElementById('bmn'+id).value);
+    const mx=parseFloat(document.getElementById('bmx'+id).value);
+    const rs=parseFloat(document.getElementById('brs'+id).value);
+    if(!mes||!p||!l||isNaN(mn)||isNaN(mx)||isNaN(rs)){ erros.push(l||'?'); return; }
+    if(mn>=mx){ erros.push(l||'?'); return; }
+    const ml=fmtMes(mes);
+    const ok=rs>=mn&&rs<=mx;
+    novos.push({mes,ml,p,l,id:idade,t:'Compressão (MPa)',mn,mx,r:+rs.toFixed(3),ok});
+  });
+  if(novos.length===0){msg.className='batch-msg er';msg.textContent='Nenhuma linha válida. Verifique os campos obrigatórios.';return;}
+  pushRegistros(novos);
+  sess=[...novos.slice().reverse(),...sess];
+  msg.className='batch-msg ok';
+  msg.textContent='✔ '+novos.length+' ensaios salvos!'+(erros.length?' ('+erros.length+' com erro)':'');
+  document.getElementById('batchBody').innerHTML='';
+  batchRowId=0;
+  setTimeout(()=>{msg.className='batch-msg';},5000);
+}
+
+// ══ REGISTRO ÚNICO ══
+function onPC(){const d=DATA.find(r=>r.p===document.getElementById('fP').value);if(d){document.getElementById('fMn').value=d.mn;document.getElementById('fMx').value=d.mx;prev();}}
+function prev(){const rs=parseFloat(document.getElementById('fRs').value),mn=parseFloat(document.getElementById('fMn').value),mx=parseFloat(document.getElementById('fMx').value),box=document.getElementById('fPv');if(!isNaN(rs)&&!isNaN(mn)&&!isNaN(mx)){const st=rs>=mn&&rs<=mx?'ok':rs<mn?'low':'high';
+    const stLabel=st==='ok'?'✔ APROVADO':st==='low'?'✗ REPROVADO — Abaixo do Mín':'✗ REPROVADO — Acima do Máx';
+    box.innerHTML='<strong style="color:'+statusColor(st)+';font-size:15px">'+stLabel+'</strong> &nbsp; Resultado: <strong style="color:#fff">'+rs.toFixed(3)+' MPa</strong> &nbsp; Spec: '+mn+'–'+mx+' MPa';}else{box.textContent='Preencha Resultado e Limites';}}
+
+let sess=[];
+function salvar(){
+  const mes=document.getElementById('fM').value,ps=document.getElementById('fP').value,pn=document.getElementById('fPN').value.trim(),produto=pn||ps,lote=document.getElementById('fL').value.trim(),idade=parseInt(document.getElementById('fId').value)||28,tipo=document.getElementById('fTp').value.trim()||'Compressão (MPa)',mn=parseFloat(document.getElementById('fMn').value),mx=parseFloat(document.getElementById('fMx').value),rs=parseFloat(document.getElementById('fRs').value),msg=document.getElementById('fMsg');
+  if(!mes||!produto||!lote||isNaN(mn)||isNaN(mx)||isNaN(rs)){msg.className='msg er';msg.textContent='Preencha todos os campos obrigatórios (*)';return;}
+  if(mn>=mx){msg.className='msg er';msg.textContent='Lim. Mínimo deve ser menor que Lim. Máximo';return;}
+  const ml=fmtMes(mes),ok=rs>=mn&&rs<=mx;
+  const novo={mes,ml,p:produto,l:lote,id:idade,t:tipo,mn,mx,r:+rs.toFixed(3),ok};
+  pushRegistros([novo]);
+  sess.unshift(novo);
+  msg.className='msg ok';msg.textContent=`✔ ${produto}/Lote ${lote} salvo! (${ok?'Aprovado':'Reprovado'})`;
+  setTimeout(()=>{msg.className='msg';},5000);
+}
+function limpar(){['fM','fL','fPN','fRs'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});document.getElementById('fP').value='';document.getElementById('fId').value=28;document.getElementById('fMn').value='';document.getElementById('fMx').value='';document.getElementById('fPv').textContent='Preencha Resultado e Limites';}
+
+// ══ SESSÃO ══
+function updSess(){
+  document.getElementById('sN').textContent=sess.length+' registros';
+  document.getElementById('sBody').innerHTML=sess.slice(0,30).map(d=>`<tr><td>${d.ml}</td><td>${d.p}</td><td>${d.l}</td><td class="${statusValClass(statusOf(d))}">${d.r.toFixed(3)}</td><td style="color:var(--gy3)">${d.mn}–${d.mx}</td><td><span class="bv ${statusClass(statusOf(d))}">${statusLabel(statusOf(d))}</span></td></tr>`).join('');
+}
+
+// ══ TABELA ══
+function rTable(){
+  const p=document.getElementById('tP').value,
+        s=document.getElementById('tSt').value,
+        b=document.getElementById('tBs').value.trim().toLowerCase();
+  // Construir lista com índice original no DATA para exclusão
+  const rows=DATA.map((d,i)=>({...d,_idx:i}))
+    .filter(d=>(p==='T'||d.p===p)&&(s==='T'||(s==='A'?d.ok:s==='L'?statusOf(d)==='low':s==='H'?statusOf(d)==='high':!d.ok))&&(!b||d.l.toLowerCase().includes(b)))
+    .sort((a,b)=>b.mes.localeCompare(a.mes)||a.p.localeCompare(b.p));
+  document.getElementById('tCnt').textContent=rows.length+' registros';
+  const seedLen = SEED.length;
+  document.getElementById('tBody').innerHTML=rows.map(d=>{
+    const isExtra = d._idx >= seedLen; // só extras podem ser excluídos
+    const delBtn = isExtra
+      ? `<button class="btn-del" onclick="askDelete(${d._idx})" title="Excluir este ensaio">✕</button>`
+      : `<span title="Registro original — não pode ser excluído" style="color:var(--gy3);font-size:11px;padding:2px 7px">🔒</span>`;
+    return `<tr>
+      <td>${d.ml}</td><td>${d.p}</td><td>${d.l}</td>
+      <td style="color:var(--gy3)">${d.id}d</td>
+      <td class="${statusValClass(statusOf(d))}">${d.r.toFixed(3)}</td>
+      <td style="color:var(--grn)">${d.mn}</td>
+      <td style="color:var(--red2)">${d.mx}</td>
+      <td><span class="bv ${statusClass(statusOf(d))}">${statusLabel(statusOf(d))}</span></td>
+      <td style="text-align:center">${delBtn}</td>
+    </tr>`;
+  }).join('');
+}
+function doCSV(){const p=document.getElementById('tP').value,s=document.getElementById('tSt').value;const rows=DATA.filter(d=>(p==='T'||d.p===p)&&(s==='T'||(s==='A'?d.ok:!d.ok)));const h='Mês,Produto,Lote,Idade (dias),Tipo,Lim.Min (MPa),Lim.Max (MPa),Resultado (MPa),Status';const body=rows.map(d=>[d.ml,d.p,d.l,d.id,d.t,d.mn,d.mx,d.r,statusLabel(statusOf(d))].join(',')).join('\n');const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(h+'\n'+body);a.download='bela_vista_ensaios.csv';a.click();}
+
+// ══ RESET ══
+function resetData(){if(confirm('Remover registros adicionados e restaurar os 843 registros originais?')){localStorage.removeItem('bv_extras');localStorage.removeItem('bv_meses_sync');EXTRAS=[];MESES_SYNC=new Set();DATA=[...SEED];sess=[];initSel();render();rTable();updSess();alert('Pronto! 843 registros originais restaurados.');}}
+
+// ══ NAV ══
+function setPage(id,btn){document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));document.getElementById('page-'+id).classList.add('on');btn.classList.add('on');if(id==='dados')rTable();}
+function setFTab(id,btn){document.querySelectorAll('.ftab-page').forEach(p=>p.classList.remove('on'));document.querySelectorAll('.ftab').forEach(b=>b.classList.remove('on'));document.getElementById('ftab-'+id).classList.add('on');btn.classList.add('on');}
+
+// ══ BOOT ══
+// ══ MULTI-SELECT MESES ══
+let selectedMeses = new Set(); // vazio = todos
+
+function getSelectedMeses() {
+  return [...selectedMeses];
+}
+
+function buildMsItems() {
+  const list = document.getElementById('msMesList');
+  if (!list) return;
+  const todos = mesList();
+  list.innerHTML = todos.map(m => {
+    const sel = selectedMeses.size === 0 || selectedMeses.has(m);
+    return `<div class="ms-item ${sel?'selected':''}" onclick="toggleMes('${m}',this)" data-mes="${m}">
+      <div class="ms-cb">${sel?'<span style=\'color:#fff;font-size:10px;font-weight:700\'>✓</span>':''}</div>
+      ${mlOf(m)}
+    </div>`;
+  }).join('');
+  updateMsBtn();
+}
+
+function toggleMs(e, dropId, btnId) {
+  e.stopPropagation();
+  const drop = document.getElementById(dropId);
+  const btn  = document.getElementById(btnId);
+  const isOpen = drop.classList.contains('open');
+  // Fechar outros dropdowns abertos
+  document.querySelectorAll('.ms-dropdown.open').forEach(d => d.classList.remove('open'));
+  document.querySelectorAll('.ms-btn.open').forEach(b => b.classList.remove('open'));
+  if (!isOpen) { drop.classList.add('open'); btn.classList.add('open'); }
+}
+
+function toggleMes(mes, el) {
+  if (selectedMeses.has(mes)) {
+    selectedMeses.delete(mes);
+    el.classList.remove('selected');
+    el.querySelector('.ms-cb').innerHTML = '';
+  } else {
+    selectedMeses.add(mes);
+    el.classList.add('selected');
+    el.querySelector('.ms-cb').innerHTML = '<span style="color:#fff;font-size:10px;font-weight:700">✓</span>';
+  }
+  updateMsBtn();
+  render();
+}
+
+function selectAllMs() {
+  selectedMeses.clear();
+  buildMsItems();
+  render();
+}
+
+function updateMsBtn() {
+  const btn = document.getElementById('mesMsBtn');
+  if (!btn) return;
+  const allCb = document.getElementById('msAllCb');
+  if (selectedMeses.size === 0) {
+    btn.textContent = 'Todos os meses';
+    btn.insertAdjacentHTML('beforeend','<span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--gy);font-size:11px">▾</span>');
+    if (allCb) allCb.style.background = 'var(--red)';
+  } else {
+    const sorted = [...selectedMeses].sort();
+    const labels = sorted.map(m => mlOf(m));
+    btn.textContent = labels.length <= 3 ? labels.join(', ') : labels.slice(0,2).join(', ')+' +'+( labels.length-2)+' mais';
+    btn.insertAdjacentHTML('beforeend','<span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--gy);font-size:11px">▾</span>');
+    if (allCb) allCb.style.background = 'transparent';
+  }
+}
+
+// Fechar dropdown ao clicar fora
+document.addEventListener('click', () => {
+  document.querySelectorAll('.ms-dropdown.open').forEach(d => d.classList.remove('open'));
+  document.querySelectorAll('.ms-btn.open').forEach(b => b.classList.remove('open'));
+});
+
+// ══ EXCLUSÃO DE REGISTROS ══
+let pendingDelIdx = null;
+
+function askDelete(dataIdx) {
+  const d = DATA[dataIdx];
+  if (!d) return;
+  pendingDelIdx = dataIdx;
+  document.getElementById('delDetail').innerHTML =
+    `<strong>Mês:</strong> ${d.ml} &nbsp; <strong>Produto:</strong> ${d.p} &nbsp; <strong>Lote:</strong> ${d.l}<br>` +
+    `<strong>Resultado:</strong> ${d.r.toFixed(3)} MPa &nbsp; ` +
+    `<strong>Spec:</strong> ${d.mn}–${d.mx} MPa &nbsp; ` +
+    `<strong>Status:</strong> ${statusLabel(statusOf(d))}`;
+  document.getElementById('delModal').style.display = 'flex';
+}
+
+function closeDelModal() {
+  document.getElementById('delModal').style.display = 'none';
+  pendingDelIdx = null;
+}
+
+function confirmDelete() {
+  if (pendingDelIdx === null) return;
+  const d = DATA[pendingDelIdx];
+  if (!d) { closeDelModal(); return; }
+
+  // Remover de EXTRAS (encontrar pelo conteúdo, pois o idx em DATA muda após remoções)
+  const extrasIdx = EXTRAS.findIndex(e =>
+    e.mes===d.mes && e.p===d.p && e.l===d.l && e.r===d.r && e.mn===d.mn && e.mx===d.mx
+  );
+  if (extrasIdx >= 0) {
+    EXTRAS.splice(extrasIdx, 1);
+    DATA = [...SEED, ...EXTRAS];
+    saveExtras();
+    initSel(); render(); rTable(); updSess();
+  }
+  closeDelModal();
+}
+
+// ══ SINCRONIZAÇÃO COM PLANILHA F 6.1-3 ══
+
+// Configuração das abas da planilha (nome_aba → [prod_name, col_res, col_status, col_data, col_lmin, col_lmax])
+// Colunas 0-indexed
+// [prod_name, col_res, col_status, col_data, col_lmin, col_lmax]
+const SHEET_CONFIG = {
+  'AAE5':             ['AAE5',              20, 22,  21, 23, 24],
+  'AAE8':             ['AAE8',              20, 22,  21, 23, 24],
+  'AAE12':            ['AAE12',             20, 22,  21, 23, 24],
+  'AAE16':            ['AAE16',             20, 22,  21, 23, 24],
+  'AAE20':            ['AAE20',             20, 22,  21, 23, 24],
+  'AAEE':             ['AAEE',              20, 22,  21, 23, 24],
+  'AAV e AAF':        ['AAV e AAF',         20, 21,  22, 23, 24],
+  'CONTRAPISO':       ['Contrapiso',        20, 22,  21, 23, 24],
+  'EMBOÇOFLEX':       ['Emboçoflex',        24, 25,   2, 26, 27],
+  'REVEXTERNO':       ['Revexterno',        24, 25,   2, 26, 27],
+  'FCK 15':           ['Graute FCK 15',     19, 20,   2, 21, 22],
+  'FCK 20':           ['Graute FCK 20',     19, 20,   2, 21, 22],
+  'FCK 25':           ['Graute FCK 25',     19, 20,   2, 21, 22],
+  'FCK 30':           ['Graute FCK 30',     19, 20,   2, 21, 22],
+  'FCK 40':           ['Graute FCK 40',     19, 20,   2, 21, 22],
+  'FCK 50':           ['Graute FCK 50',     19, 20,   2, 21, 22],
+  'MULTIPLO USO':     ['Múltiplo Uso',      20, 21,   2, 22, 23],
+  'CHAOISCO CONCRETO':['Chapisco Concreto', 20, 21,   2, 22, 23],
+  'CHAPISCO ALVENARIA':['Chapisco Alvenaria',20,21,   2, 22, 23],
+};
+
+function onSyncDrag(e) {
+  e.preventDefault();
+  document.getElementById('dashFbar').style.borderColor = 'var(--amb)';
+}
+function onSyncDragLeave(e) {
+  document.getElementById('dashFbar').style.borderColor = '';
+}
+function onSyncDrop(e) {
+  e.preventDefault();
+  document.getElementById('dashFbar').style.borderColor = '';
+  const f = e.dataTransfer.files[0];
+  if (f) pwdAsk('syncFile', f, 'Sincronizar planilha', 'Digite a senha para carregar dados da planilha');
+}
+function onSyncFile(e) {
+  const f = e.target.files[0];
+  if (f) processSync(f);
+  e.target.value = '';
+}
+
+function processSync(file) {
+  const msg = document.getElementById('syncMsg');
+  msg.className = 'sync-msg inf';
+  msg.textContent = '⏳ Lendo planilha... aguarde.';
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      // raw:true → datas chegam como número serial Excel, números como número puro
+      // Isso é o mais confiável independente do formato de célula configurado
+      const wb = XLSX.read(e.target.result, {type:'array', raw:true});
+      const novos = [];
+      const contagem = {};
+      const mNames = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+      // Converter qualquer representação de data para 'YYYY-MM'
+      function toMes(val) {
+        if (val === null || val === undefined || val === '') return null;
+
+        // Número serial Excel (dias desde 30/12/1899)
+        // Datas de 2024-2030 ficam entre ~45000 e ~47500
+        if (typeof val === 'number') {
+          if (val > 40000 && val < 60000) {
+            const d = new Date(Date.UTC(1899, 11, 30) + Math.round(val) * 86400000);
+            return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}`;
+          }
+          return null;
+        }
+
+        // String — tentar vários formatos
+        const s = String(val).trim();
+        if (!s || s === '-') return null;
+
+        // yyyy-mm-dd ou yyyy-mm
+        let m = s.match(/^(\d{4})-(\d{1,2})/);
+        if (m) return `${m[1]}-${m[2].padStart(2,'0')}`;
+
+        // dd/mm/yyyy
+        m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+        if (m) return `${m[3]}-${m[2].padStart(2,'0')}`;
+
+        // mm-dd-yy (formato americano que o XLSX retorna com raw:false)
+        m = s.match(/^(\d{1,2})-(\d{1,2})-(\d{2})$/);
+        if (m) {
+          const yr = parseInt(m[3]) + 2000;
+          return `${yr}-${m[1].padStart(2,'0')}`;
+        }
+
+        // Serial como string
+        const n = parseInt(s);
+        if (!isNaN(n) && n > 40000 && n < 60000) {
+          const d = new Date(Date.UTC(1899, 11, 30) + n * 86400000);
+          return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}`;
+        }
+
+        // Date object (não deve acontecer com raw:true mas por segurança)
+        if (val instanceof Date && !isNaN(val)) {
+          return `${val.getFullYear()}-${String(val.getMonth()+1).padStart(2,'0')}`;
+        }
+
+        return null;
+      }
+
+      function parseNum(v) {
+        if (v === null || v === undefined || v === '' || v === '-') return NaN;
+        if (typeof v === 'number') return v;
+        return parseFloat(String(v).replace(',', '.'));
+      }
+
+      Object.entries(SHEET_CONFIG).forEach(([sheetName, cfg]) => {
+        if (!wb.SheetNames.includes(sheetName)) return;
+        const [prodName, colRes, colStatus, colData, colLmin, colLmax] = cfg;
+        const ws = wb.Sheets[sheetName];
+        const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, raw:true});
+
+        let n = 0;
+        for (let i = 5; i < rows.length; i++) {
+          const row = rows[i];
+          if (!row || row.length === 0) continue;
+
+          const res  = parseNum(row[colRes]);
+          const lmin = parseNum(row[colLmin]);
+          const lmax = parseNum(row[colLmax]);
+
+          if (isNaN(res) || res === 0) continue;
+          if (isNaN(lmin) || isNaN(lmax) || lmin <= 0 || lmax <= 0) continue;
+
+          const mes = toMes(row[colData]);
+          if (!mes) continue;
+
+          // Lote: pode ser número ou string
+          const loteRaw = row[1];
+          const loteNum = parseFloat(loteRaw);
+          const lote = (!isNaN(loteNum) && loteNum > 0)
+            ? String(Math.round(loteNum))
+            : (loteRaw ? String(loteRaw).trim() : '');
+          if (!lote || lote === '-') continue; // pular linhas sem lote válido
+
+          const [yr, mo] = mes.split('-');
+          const ml = `${mNames[parseInt(mo)-1]}/${yr}`;
+          const ok = res >= lmin && res <= lmax;
+
+          novos.push({
+            mes, ml, p: prodName, l: lote, id: 28,
+            t: 'Compressão (MPa)',
+            mn: lmin,
+            mx: (lmax === Math.round(lmax)) ? Math.round(lmax) : lmax,
+            r: Math.round(res * 1000) / 1000,
+            ok, _planilha: true
+          });
+          n++;
+        }
+        contagem[prodName] = n;
+      });
+
+      if (novos.length === 0) {
+        msg.className = 'sync-msg er';
+        const abasEncontradas = wb.SheetNames.filter(s => SHEET_CONFIG[s]);
+        msg.textContent = '❌ Nenhum registro válido encontrado. Abas da planilha detectadas: ' + 
+          (abasEncontradas.length ? abasEncontradas.join(', ') : 'nenhuma aba conhecida') + '.';
+        return;
+      }
+
+      // Substituir dados da planilha, preservar inserções manuais
+      const MANUAIS = EXTRAS.filter(ex => ex._manual === true);
+
+      // Identificar quais meses a planilha cobre e persistir no localStorage
+      const mesesPlanilha = new Set(novos.map(r => r.mes));
+      MESES_SYNC = mesesPlanilha; // atualizar variável global
+
+      // Remover do SEED os registros dos meses que a planilha cobre
+      const SEED_FILTRADO = SEED.filter(r => !mesesPlanilha.has(r.mes));
+
+      EXTRAS = [...novos, ...MANUAIS];
+      DATA = [...SEED_FILTRADO, ...EXTRAS];
+      saveExtras(); // salva EXTRAS + MESES_SYNC no localStorage
+      initSel(); render(); rTable(); updSess();
+
+      const agora = new Date().toLocaleString('pt-BR',
+        {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+      document.getElementById('syncStats').innerHTML =
+        `Última sincronização: <strong>${agora}</strong> · ` +
+        `<strong>${novos.length}</strong> registros de ` +
+        `<strong>${Object.values(contagem).filter(n=>n>0).length}</strong> produtos`;
+
+      const resumo = Object.entries(contagem)
+        .filter(([,n]) => n > 0)
+        .map(([p,n]) => `${p}: ${n}`)
+        .join(' · ');
+      msg.className = 'sync-msg ok';
+      msg.textContent = `✔ Sincronizado! ${novos.length} registros. ${resumo}`;
+
+    } catch(err) {
+      msg.className = 'sync-msg er';
+      msg.textContent = '❌ Erro ao ler a planilha: ' + err.message;
+      console.error(err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ══ MODAL DE SENHA ══
+const PWD_HASH = 'f9d0e4f3bd3cc1f4ebe3f8a3a60e7d3495487491f922f2b74f3f148fc45c12ab'; // senha: BV2026 — altere aqui se precisar trocar
+// Trocar pela sua senha: use SHA-256 da senha desejada
+
+async function hashPwd(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+let pwdCallback = null;
+
+function pwdAsk(action, payload, title, sub) {
+  pwdCallback = {action, payload};
+  document.getElementById('pwdTitle').textContent = title;
+  document.getElementById('pwdSub').textContent   = sub;
+  document.getElementById('pwdErr').textContent   = '';
+  document.getElementById('pwdInput').value       = '';
+  document.getElementById('pwdInput').type        = 'password';
+  document.getElementById('pwdModal').style.display = 'flex';
+  setTimeout(() => document.getElementById('pwdInput').focus(), 50);
+}
+
+function pwdToggle() {
+  const inp = document.getElementById('pwdInput');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+async function pwdConfirm() {
+  const val = document.getElementById('pwdInput').value;
+  if (!val) { document.getElementById('pwdErr').textContent = 'Digite a senha.'; return; }
+  const hash = await hashPwd(val);
+  if (hash !== PWD_HASH) {
+    document.getElementById('pwdErr').textContent = '❌ Senha incorreta.';
+    document.getElementById('pwdInput').value = '';
+    document.getElementById('pwdInput').focus();
+    return;
+  }
+  // Senha correta — fechar e executar ação
+  document.getElementById('pwdModal').style.display = 'none';
+  const {action, payload} = pwdCallback;
+  pwdCallback = null;
+  if (action === 'sync')      document.getElementById('syncFileInput').click();
+  if (action === 'syncFile')  processSync(payload);
+  if (action === 'salvar')    salvar();
+  if (action === 'batch')     saveBatch();
+  if (action === 'import')    doImport();
+}
+
+function pwdCancel() {
+  document.getElementById('pwdModal').style.display = 'none';
+  pwdCallback = null;
+}
+
+function onAnoChange() {
+  // Ao mudar o ano, limpar seleção de meses para evitar meses de outro ano selecionados
+  selectedMeses.clear();
+  buildMsItems();
+  render();
+}
+
+document.getElementById('hDate').textContent=new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+initSel();
+render();
+// Carregar dados do Supabase de forma assíncrona (substitui cache local se online)
+if (SB_MODE === 'online') loadFromSupabase();
+// Inicializar tabela batch com 5 linhas vazias
+for(let i=0;i<5;i++) addBatchRow();
+</script>
+</body>
+</html>
