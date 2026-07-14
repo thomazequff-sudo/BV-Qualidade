@@ -579,34 +579,61 @@ const saveLocalStorage = () => {
 // ── Salvar no Supabase ──
 async function saveToSupabase(registros, mesesSync) {
   if (SB_MODE !== 'online') return;
+  const statsEl = document.getElementById('syncStats');
   try {
-    // Limpar tabela e reinserir tudo (upsert por id único)
-    // Usar DELETE + INSERT para garantir dados sempre atualizados
-    await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?id=gte.0`, {
-      method: 'DELETE', headers: sbHeaders()
-    });
-    if (registros.length > 0) {
-      // Inserir em lotes de 500
-      for (let i = 0; i < registros.length; i += 500) {
-        const lote = registros.slice(i, i+500).map((r,j) => ({...r, id: i+j}));
-        await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}`, {
-          method: 'POST', headers: sbHeaders(), body: JSON.stringify(lote)
-        });
-      }
+    // 1. Apagar registros existentes
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?id=gte.0`,
+      { method: 'DELETE',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Prefer': 'return=minimal' } }
+    );
+
+    // 2. Inserir em lotes de 200
+    for (let i = 0; i < registros.length; i += 200) {
+      const lote = registros.slice(i, i + 200).map((r, j) => ({
+        id:        i + j,
+        mes:       r.mes  || '',
+        ml:        r.ml   || '',
+        p:         r.p    || '',
+        l:         r.l    || '',
+        id_idade:  r.id   || 28,
+        t:         r.t    || 'Compressão (MPa)',
+        mn:        r.mn   || 0,
+        mx:        r.mx   || 0,
+        r:         r.r    || 0,
+        ok:        !!r.ok,
+        _planilha: !!r._planilha,
+        _manual:   !!r._manual
+      }));
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}`,
+        { method: 'POST',
+          headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY,
+                     'Content-Type': 'application/json',
+                     'Prefer': 'resolution=merge-duplicates,return=minimal' },
+          body: JSON.stringify(lote) }
+      );
+      if (!res.ok) console.error('[BV] Insert lote', i, ':', res.status, await res.text());
     }
-    // Salvar meses_sync em tabela de config
-    await fetch(`${SUPABASE_URL}/rest/v1/config?chave=eq.meses_sync`, {
-      method: 'DELETE', headers: sbHeaders()
-    });
-    await fetch(`${SUPABASE_URL}/rest/v1/config`, {
-      method: 'POST', headers: sbHeaders(),
-      body: JSON.stringify({chave:'meses_sync', valor: JSON.stringify([...mesesSync])})
-    });
+
+    // 3. Salvar meses_sync
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/config`,
+      { method: 'POST',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY,
+                   'Content-Type': 'application/json',
+                   'Prefer': 'resolution=merge-duplicates,return=minimal' },
+        body: JSON.stringify({ chave: 'meses_sync', valor: JSON.stringify([...mesesSync]) }) }
+    );
+
+    console.log('[BV] Salvo no Supabase:', registros.length, 'registros');
+    if (statsEl) statsEl.innerHTML += ' &nbsp;·&nbsp; <span style="color:#2ecc71">✔ Salvo na nuvem</span>';
+
   } catch(err) {
-    console.warn('Supabase save error:', err);
+    console.error('[BV] Supabase save error:', err);
+    if (statsEl) statsEl.innerHTML += ' &nbsp;·&nbsp; <span style="color:#e74c3c">⚠ Erro na nuvem</span>';
   }
 }
-
 // ── Carregar do Supabase ──
 async function loadFromSupabase() {
   if (SB_MODE !== 'online') { loadFromLocalStorage(); return; }
@@ -628,7 +655,10 @@ async function loadFromSupabase() {
     const cfg = await res2.json();
     const mesesArr = cfg.length ? JSON.parse(cfg[0].valor) : [];
 
-    EXTRAS = rows.map(r => { const {id,...rest}=r; return rest; });
+    EXTRAS = rows.map(r => {
+      const { id, id_idade, _planilha, _manual, ...rest } = r;
+      return { ...rest, id: id_idade || 28, _planilha: !!_planilha, _manual: !!_manual };
+    });
     MESES_SYNC = new Set(mesesArr);
     DATA = [...SEED.filter(r => !MESES_SYNC.has(r.mes)), ...EXTRAS];
 
