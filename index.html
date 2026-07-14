@@ -634,6 +634,16 @@ async function saveToSupabase(registros, mesesSync) {
     if (statsEl) statsEl.innerHTML += ' &nbsp;·&nbsp; <span style="color:#e74c3c">⚠ Erro na nuvem</span>';
   }
 }
+// ── Status visual de sincronização (usado por loadFromSupabase) ──
+function showSyncStatus(text) {
+  const el = document.getElementById('syncMsg');
+  if (el) { el.className = 'sync-msg inf'; el.textContent = text; }
+}
+function hideSyncStatus() {
+  const el = document.getElementById('syncMsg');
+  if (el) { el.className = 'sync-msg'; el.textContent = ''; }
+}
+
 // ── Carregar do Supabase ──
 async function loadFromSupabase() {
   if (SB_MODE !== 'online') { loadFromLocalStorage(); return; }
