@@ -501,6 +501,24 @@ tbody tr:hover td{background:rgba(255,255,255,.018)}
   </div>
 </div>
 
+<!-- Bloqueio de acesso (senha de visualização) -->
+<div class="pwd-overlay" id="viewLock" style="display:flex;z-index:9999">
+  <div class="pwd-box">
+    <div class="pwd-icon">🔐</div>
+    <div class="pwd-title">Acesso Restrito</div>
+    <div class="pwd-sub">Este painel contém dados sensíveis de ensaio.<br>Digite a senha de acesso para continuar.</div>
+    <div class="pwd-input-wrap">
+      <input class="pwd-input" type="password" id="viewPwdInput" placeholder="••••••••"
+             onkeydown="if(event.key==='Enter')viewPwdConfirm()" autocomplete="off">
+      <button class="pwd-toggle" onclick="viewPwdToggle()" tabindex="-1">👁</button>
+    </div>
+    <div class="pwd-err" id="viewPwdErr"></div>
+    <div class="pwd-actions">
+      <button class="pwd-btn-ok" onclick="viewPwdConfirm()" style="flex:1">Entrar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal de senha -->
 <div class="pwd-overlay" id="pwdModal" style="display:none">
   <div class="pwd-box">
@@ -972,10 +990,28 @@ function doImport() {
   if (novos.length === 0) {
     msg.className='import-msg er'; msg.textContent=`Nenhum registro válido encontrado. Verifique o mapeamento das colunas.`; return;
   }
-  pushRegistros(novos);
-  sess = [...novos.slice().reverse(), ...sess];
+  // Remover duplicatas: mesmo mês+produto+lote+idade+resultado já existente na base,
+  // ou repetido dentro do próprio arquivo importado
+  const chaveOf = r => `${r.mes}|${r.p}|${r.l}|${r.id}|${r.r}`;
+  const chavesExistentes = new Set(DATA.map(chaveOf));
+  const unicos = []; let duplicados = 0;
+  novos.forEach(n => {
+    const k = chaveOf(n);
+    if (chavesExistentes.has(k)) { duplicados++; return; }
+    chavesExistentes.add(k);
+    unicos.push(n);
+  });
+  if (unicos.length === 0) {
+    msg.className='import-msg er';
+    msg.textContent = `Nenhum registro novo — os ${novos.length} já existem na base (duplicados).`;
+    return;
+  }
+  pushRegistros(unicos);
+  sess = [...unicos.slice().reverse(), ...sess];
   msg.className='import-msg ok';
-  msg.textContent='✔ '+novos.length+' registros importados!'+(erros.length?' ('+erros.length+' ignoradas)':'');
+  msg.textContent='✔ '+unicos.length+' registros importados!'
+    + (duplicados ? ' ('+duplicados+' duplicados ignorados)' : '')
+    + (erros.length?' ('+erros.length+' linhas ignoradas por erro)':'');
   document.getElementById('mapSection').style.display='none';
   importedRows=[]; importedCols=[];
   document.getElementById('fileInput').value='';
@@ -1130,7 +1166,17 @@ function rTable(){
 function doCSV(){const p=document.getElementById('tP').value,s=document.getElementById('tSt').value;const rows=DATA.filter(d=>(p==='T'||d.p===p)&&(s==='T'||(s==='A'?d.ok:!d.ok)));const h='Mês,Produto,Lote,Idade (dias),Tipo,Lim.Min (MPa),Lim.Max (MPa),Resultado (MPa),Status';const body=rows.map(d=>[d.ml,d.p,d.l,d.id,d.t,d.mn,d.mx,d.r,statusLabel(statusOf(d))].join(',')).join('\n');const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(h+'\n'+body);a.download='bela_vista_ensaios.csv';a.click();}
 
 // ══ RESET ══
-function resetData(){if(confirm('Remover registros adicionados e restaurar os 843 registros originais?')){localStorage.removeItem('bv_extras');localStorage.removeItem('bv_meses_sync');EXTRAS=[];MESES_SYNC=new Set();DATA=[...SEED];sess=[];initSel();render();rTable();updSess();alert('Pronto! 843 registros originais restaurados.');}}
+function resetData(){
+  pwdAsk('reset', null, 'Restaurar Dados', 'Digite a senha para remover os registros adicionados e restaurar os 843 registros originais');
+}
+function doResetConfirmed(){
+  localStorage.removeItem('bv_extras');
+  localStorage.removeItem('bv_meses_sync');
+  EXTRAS=[]; MESES_SYNC=new Set(); DATA=[...SEED]; sess=[];
+  initSel(); render(); rTable(); updSess();
+  saveExtras(); // também limpa a nuvem (Supabase), já que EXTRAS agora está vazio
+  alert('Pronto! 843 registros originais restaurados.');
+}
 
 // ══ NAV ══
 function setPage(id,btn){document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));document.getElementById('page-'+id).classList.add('on');btn.classList.add('on');if(id==='dados')rTable();}
@@ -1234,8 +1280,13 @@ function closeDelModal() {
 
 function confirmDelete() {
   if (pendingDelIdx === null) return;
-  const d = DATA[pendingDelIdx];
-  if (!d) { closeDelModal(); return; }
+  document.getElementById('delModal').style.display = 'none';
+  pwdAsk('delete', pendingDelIdx, 'Excluir Ensaio', 'Digite a senha para confirmar a exclusão deste registro');
+}
+
+function doDeleteConfirmed(dataIdx) {
+  const d = DATA[dataIdx];
+  if (!d) { pendingDelIdx = null; return; }
 
   // Remover de EXTRAS (encontrar pelo conteúdo, pois o idx em DATA muda após remoções)
   const extrasIdx = EXTRAS.findIndex(e =>
@@ -1247,7 +1298,7 @@ function confirmDelete() {
     saveExtras();
     initSel(); render(); rTable(); updSess();
   }
-  closeDelModal();
+  pendingDelIdx = null;
 }
 
 // ══ SINCRONIZAÇÃO COM PLANILHA F 6.1-3 ══
@@ -1457,6 +1508,36 @@ function processSync(file) {
   reader.readAsArrayBuffer(file);
 }
 
+// ══ BLOQUEIO DE ACESSO (SENHA DE VISUALIZAÇÃO — diferente da senha de sincronização) ══
+const VIEW_PWD_HASH = '925f45f995e5c5ccda3b3644f09b43ab6ed8eb0c9065c4ee46835febd4ac11df'; // senha temporária: AcessoBV2026 — TROQUE assim que possível
+
+async function checkViewAccess() {
+  if (sessionStorage.getItem('bv_view_ok') === '1') {
+    document.getElementById('viewLock').style.display = 'none';
+  } else {
+    setTimeout(() => document.getElementById('viewPwdInput').focus(), 50);
+  }
+}
+
+function viewPwdToggle() {
+  const inp = document.getElementById('viewPwdInput');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+async function viewPwdConfirm() {
+  const val = document.getElementById('viewPwdInput').value;
+  if (!val) { document.getElementById('viewPwdErr').textContent = 'Digite a senha.'; return; }
+  const hash = await hashPwd(val);
+  if (hash !== VIEW_PWD_HASH) {
+    document.getElementById('viewPwdErr').textContent = '❌ Senha incorreta.';
+    document.getElementById('viewPwdInput').value = '';
+    document.getElementById('viewPwdInput').focus();
+    return;
+  }
+  sessionStorage.setItem('bv_view_ok', '1');
+  document.getElementById('viewLock').style.display = 'none';
+}
+
 // ══ MODAL DE SENHA ══
 const PWD_HASH = 'f9d0e4f3bd3cc1f4ebe3f8a3a60e7d3495487491f922f2b74f3f148fc45c12ab'; // senha: BV2026 — altere aqui se precisar trocar
 // Trocar pela sua senha: use SHA-256 da senha desejada
@@ -1465,6 +1546,8 @@ async function hashPwd(str) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
   return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
+
+checkViewAccess();
 
 let pwdCallback = null;
 
@@ -1503,6 +1586,8 @@ async function pwdConfirm() {
   if (action === 'salvar')    salvar();
   if (action === 'batch')     saveBatch();
   if (action === 'import')    doImport();
+  if (action === 'reset')     doResetConfirmed();
+  if (action === 'delete')    doDeleteConfirmed(payload);
 }
 
 function pwdCancel() {
