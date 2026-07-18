@@ -635,6 +635,7 @@ async function saveToSupabase(registros, mesesSync) {
         mx:        r.mx   || 0,
         r:         r.r    || 0,
         ok:        !!r.ok,
+        reg:       r.reg  || null,
         _planilha: !!r._planilha,
         _manual:   !!r._manual
       }));
