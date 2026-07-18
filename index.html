@@ -264,7 +264,23 @@ tbody tr:hover td{background:rgba(255,255,255,.018)}
       <div class="sync-desc">Arraste o arquivo <strong style="color:#f0c040">F_6_1-3_ENSAIO_DE_PRODUTO_ACABADO_-_2026.xlsm</strong> aqui ou clique no botão para atualizar o dashboard com os dados mais recentes.</div>
       <div class="sync-stats" id="syncStats">Última sincronização: <strong>nenhuma</strong></div>
       <div class="sync-msg" id="syncMsg"></div>
-      <div id="syncLoteAvisoBox" style="display:none;background:rgba(230,126,34,.08);border:1px solid rgba(230,126,34,.28);border-radius:8px;padding:10px 14px;margin-top:8px;font-size:12px;color:#e67e22;line-height:1.6"></div>
+      <div id="conflitoSyncBox" style="display:none;background:rgba(230,126,34,.08);border:1px solid rgba(230,126,34,.28);border-radius:8px;padding:14px 16px;margin-top:8px">
+        <div style="font-size:12px;font-weight:700;color:#e67e22;margin-bottom:6px">⚠ Lotes já existentes na base original (843)</div>
+        <div style="font-size:12px;color:var(--gy2);margin-bottom:10px;line-height:1.5">
+          Podem ser reprocessamento do mesmo ensaio. Marque os que devem ser lançados mesmo assim —
+          os desmarcados mantêm o valor original da base e não são sincronizados.
+        </div>
+        <div style="display:flex;gap:14px;margin-bottom:8px;font-size:11px">
+          <a href="javascript:void(0)" onclick="marcarTodosConflito('sync',true)" style="color:var(--gy2)">Marcar todos</a>
+          <a href="javascript:void(0)" onclick="marcarTodosConflito('sync',false)" style="color:var(--gy2)">Desmarcar todos</a>
+          <span id="conflitoSyncCnt" style="color:var(--gy);margin-left:auto">0 de 0 selecionados para lançar</span>
+        </div>
+        <div id="conflitoSyncList" style="max-height:280px;overflow-y:auto;border-top:1px solid rgba(255,255,255,.06)"></div>
+        <div class="import-actions" style="margin-top:12px">
+          <button class="btn-import" onclick="confirmarConflito('sync')">&#10004; Confirmar e lançar selecionados</button>
+          <button class="btn-cancel-import" onclick="cancelarConflito('sync')">Cancelar sincronização</button>
+        </div>
+      </div>
     </div>
     <div style="display:flex;flex-direction:column;gap:8px;flex-shrink:0">
       <button class="btn-sync" onclick="pwdAsk('sync',null,'Sincronizar planilha','Digite a senha para carregar dados da planilha')">
@@ -429,7 +445,23 @@ tbody tr:hover td{background:rgba(255,255,255,.018)}
           <span class="import-msg" id="importMsg"></span>
         </div>
       </div>
-      <div id="loteAvisoBox" style="display:none;background:rgba(230,126,34,.08);border:1px solid rgba(230,126,34,.28);border-radius:8px;padding:10px 14px;margin-top:10px;font-size:12px;color:#e67e22;line-height:1.6"></div>
+      <div id="conflitoImportBox" style="display:none;background:rgba(230,126,34,.08);border:1px solid rgba(230,126,34,.28);border-radius:8px;padding:14px 16px;margin-top:10px">
+        <div style="font-size:12px;font-weight:700;color:#e67e22;margin-bottom:6px">⚠ Lotes já existentes na base original (843)</div>
+        <div style="font-size:12px;color:var(--gy2);margin-bottom:10px;line-height:1.5">
+          Podem ser reprocessamento do mesmo ensaio. Marque os que devem ser lançados mesmo assim —
+          os desmarcados mantêm o valor original da base e não são importados.
+        </div>
+        <div style="display:flex;gap:14px;margin-bottom:8px;font-size:11px">
+          <a href="javascript:void(0)" onclick="marcarTodosConflito('import',true)" style="color:var(--gy2)">Marcar todos</a>
+          <a href="javascript:void(0)" onclick="marcarTodosConflito('import',false)" style="color:var(--gy2)">Desmarcar todos</a>
+          <span id="conflitoImportCnt" style="color:var(--gy);margin-left:auto">0 de 0 selecionados para lançar</span>
+        </div>
+        <div id="conflitoImportList" style="max-height:280px;overflow-y:auto;border-top:1px solid rgba(255,255,255,.06)"></div>
+        <div class="import-actions" style="margin-top:12px">
+          <button class="btn-import" onclick="confirmarConflito('import')">&#10004; Confirmar e lançar selecionados</button>
+          <button class="btn-cancel-import" onclick="cancelarConflito('import')">Cancelar importação</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1109,25 +1141,33 @@ function finalizarImport(novos, erros) {
     msg.textContent = `Nenhum registro novo — os ${novos.length} já existem na base (duplicados).`;
     return;
   }
+
+  // Separar lotes que já existem na base original (843) — pedir confirmação antes de lançar
+  const comConflito = unicos.filter(n => loteNoSeedOriginal(n.p, n.l));
+  const semConflito = unicos.filter(n => !loteNoSeedOriginal(n.p, n.l));
+
+  if (comConflito.length > 0) {
+    pendingConflito = { contexto: 'import', itens: comConflito, resto: semConflito, extra: { duplicados, erros } };
+    renderConflitoPanel('import', comConflito);
+    return; // aguarda decisão do usuário — nada é lançado ainda
+  }
+
+  commitImport(unicos, duplicados, erros);
+}
+
+function commitImport(unicos, duplicados, erros) {
+  const msg = document.getElementById('importMsg');
+  if (unicos.length === 0) {
+    msg.className='import-msg er'; msg.textContent=`Nenhum registro selecionado para lançar.`;
+    document.getElementById('mapSection').style.display='none';
+    return;
+  }
   pushRegistros(unicos);
   sess = [...unicos.slice().reverse(), ...sess];
   msg.className='import-msg ok';
   msg.textContent='✔ '+unicos.length+' registros importados!'
     + (duplicados ? ' ('+duplicados+' duplicados ignorados)' : '')
     + (erros.length?' ('+erros.length+' linhas ignoradas por erro)':'');
-
-  // Aviso não-bloqueante: lote já existe nos 843 registros originais (possível reprocessamento)
-  const avisoBox = document.getElementById('loteAvisoBox');
-  const lotesRepetidos = [...new Set(
-    unicos.filter(n => loteNoSeedOriginal(n.p, n.l)).map(n => `${n.p} — Lote ${n.l}`)
-  )];
-  if (lotesRepetidos.length) {
-    avisoBox.style.display = 'block';
-    avisoBox.innerHTML = `⚠ ${lotesRepetidos.length} lote(s) importado(s) já existe(m) na base original (843) — pode ser reprocessamento do mesmo ensaio:<br>` +
-      lotesRepetidos.map(l => `• ${l}`).join('<br>');
-  } else {
-    avisoBox.style.display = 'none';
-  }
 
   document.getElementById('mapSection').style.display='none';
   importedRows=[]; importedCols=[];
@@ -1468,6 +1508,90 @@ function onSyncFile(e) {
   e.target.value = '';
 }
 
+// Finaliza a sincronização de fato. `excluidos` são lotes que o usuário optou por NÃO lançar —
+// nesses casos, o registro original da base 843 é preservado em vez de ser sobrescrito.
+function commitSync(novosFinal, excluidos, MANUAIS) {
+  const msg = document.getElementById('syncMsg');
+  const mesesPlanilha = new Set([...novosFinal, ...excluidos].map(r => r.mes));
+  MESES_SYNC = mesesPlanilha;
+
+  const chaveSeed = r => `${r.p}|${r.l}`;
+  const chavesExcluidas = new Set(excluidos.map(chaveSeed));
+  const SEED_FILTRADO = SEED.filter(r => !mesesPlanilha.has(r.mes) || chavesExcluidas.has(chaveSeed(r)));
+
+  EXTRAS = [...novosFinal, ...MANUAIS];
+  DATA = [...SEED_FILTRADO, ...EXTRAS];
+  saveExtras(); // salva EXTRAS + MESES_SYNC no localStorage e na nuvem
+  initSel(); render(); rTable(); updSess();
+
+  const agora = new Date().toLocaleString('pt-BR',
+    {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  const contagemFinal = {};
+  novosFinal.forEach(r => { contagemFinal[r.p] = (contagemFinal[r.p]||0) + 1; });
+  document.getElementById('syncStats').innerHTML =
+    `Última sincronização: <strong>${agora}</strong> · ` +
+    `<strong>${novosFinal.length}</strong> registros de ` +
+    `<strong>${Object.keys(contagemFinal).length}</strong> produtos`;
+
+  const resumo = Object.entries(contagemFinal).map(([p,n]) => `${p}: ${n}`).join(' · ');
+  msg.className = 'sync-msg ok';
+  msg.textContent = `✔ Sincronizado! ${novosFinal.length} registros.` +
+    (excluidos.length ? ` (${excluidos.length} não lançados — mantido o dado original)` : '') +
+    ` ${resumo}`;
+}
+
+// ══ PAINEL DE CONFLITO — lote já existe na base original (843), aguarda decisão do usuário ══
+let pendingConflito = null;
+
+function renderConflitoPanel(contexto, itens) {
+  const boxId = contexto === 'sync' ? 'conflitoSyncBox' : 'conflitoImportBox';
+  const listId = contexto === 'sync' ? 'conflitoSyncList' : 'conflitoImportList';
+  document.getElementById(listId).innerHTML = itens.map((n,i) => `
+    <label style="display:flex;align-items:center;gap:8px;padding:5px 4px;font-size:12px;color:#ddd;border-bottom:1px solid rgba(255,255,255,.05)">
+      <input type="checkbox" class="conflito-chk-${contexto}" data-i="${i}" onchange="atualizarContadorConflito('${contexto}')">
+      <span style="min-width:120px">${n.p}</span>
+      <span style="color:var(--gy)">Lote ${n.l}</span>
+      <span style="color:var(--gy);margin-left:auto">${n.r.toFixed(3)} MPa</span>
+    </label>`).join('');
+  atualizarContadorConflito(contexto);
+  document.getElementById(boxId).style.display = 'block';
+  document.getElementById(boxId).scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+function atualizarContadorConflito(contexto) {
+  const cntId = contexto === 'sync' ? 'conflitoSyncCnt' : 'conflitoImportCnt';
+  const total = pendingConflito ? pendingConflito.itens.length : 0;
+  const marcados = document.querySelectorAll('.conflito-chk-'+contexto+':checked').length;
+  document.getElementById(cntId).textContent = `${marcados} de ${total} selecionados para lançar`;
+}
+
+function marcarTodosConflito(contexto, valor) {
+  document.querySelectorAll('.conflito-chk-'+contexto).forEach(chk => chk.checked = valor);
+  atualizarContadorConflito(contexto);
+}
+
+function cancelarConflito(contexto) {
+  const boxId = contexto === 'sync' ? 'conflitoSyncBox' : 'conflitoImportBox';
+  document.getElementById(boxId).style.display = 'none';
+  pendingConflito = null;
+}
+
+function confirmarConflito(contexto) {
+  if (!pendingConflito) return;
+  const marcados = [...document.querySelectorAll('.conflito-chk-'+contexto+':checked')].map(chk => parseInt(chk.dataset.i));
+  const incluidos = pendingConflito.itens.filter((_,i) => marcados.includes(i));
+  const excluidos = pendingConflito.itens.filter((_,i) => !marcados.includes(i));
+  const boxId = contexto === 'sync' ? 'conflitoSyncBox' : 'conflitoImportBox';
+  document.getElementById(boxId).style.display = 'none';
+
+  if (contexto === 'sync') {
+    commitSync([...pendingConflito.resto, ...incluidos], excluidos, pendingConflito.extra.MANUAIS);
+  } else {
+    commitImport([...pendingConflito.resto, ...incluidos], pendingConflito.extra.duplicados, pendingConflito.extra.erros);
+  }
+  pendingConflito = null;
+}
+
 function processSync(file) {
   const msg = document.getElementById('syncMsg');
   msg.className = 'sync-msg inf';
@@ -1598,47 +1722,19 @@ function processSync(file) {
         return;
       }
 
-      // Substituir dados da planilha, preservar inserções manuais
       const MANUAIS = EXTRAS.filter(ex => ex._manual === true);
 
-      // Identificar quais meses a planilha cobre e persistir no localStorage
-      const mesesPlanilha = new Set(novos.map(r => r.mes));
-      MESES_SYNC = mesesPlanilha; // atualizar variável global
+      // Separar lotes que já existem na base original (843) — pedir confirmação antes de lançar
+      const comConflito = novos.filter(n => loteNoSeedOriginal(n.p, n.l));
+      const semConflito = novos.filter(n => !loteNoSeedOriginal(n.p, n.l));
 
-      // Remover do SEED os registros dos meses que a planilha cobre
-      const SEED_FILTRADO = SEED.filter(r => !mesesPlanilha.has(r.mes));
-
-      EXTRAS = [...novos, ...MANUAIS];
-      DATA = [...SEED_FILTRADO, ...EXTRAS];
-      saveExtras(); // salva EXTRAS + MESES_SYNC no localStorage
-      initSel(); render(); rTable(); updSess();
-
-      const agora = new Date().toLocaleString('pt-BR',
-        {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
-      document.getElementById('syncStats').innerHTML =
-        `Última sincronização: <strong>${agora}</strong> · ` +
-        `<strong>${novos.length}</strong> registros de ` +
-        `<strong>${Object.values(contagem).filter(n=>n>0).length}</strong> produtos`;
-
-      const resumo = Object.entries(contagem)
-        .filter(([,n]) => n > 0)
-        .map(([p,n]) => `${p}: ${n}`)
-        .join(' · ');
-      msg.className = 'sync-msg ok';
-      msg.textContent = `✔ Sincronizado! ${novos.length} registros. ${resumo}`;
-
-      // Aviso não-bloqueante: lote já existe nos 843 registros originais (possível reprocessamento)
-      const syncAvisoBox = document.getElementById('syncLoteAvisoBox');
-      const lotesRepetidosSync = [...new Set(
-        novos.filter(n => loteNoSeedOriginal(n.p, n.l)).map(n => `${n.p} — Lote ${n.l}`)
-      )];
-      if (lotesRepetidosSync.length) {
-        syncAvisoBox.style.display = 'block';
-        syncAvisoBox.innerHTML = `⚠ ${lotesRepetidosSync.length} lote(s) sincronizado(s) já existe(m) na base original (843) — pode ser reprocessamento do mesmo ensaio:<br>` +
-          lotesRepetidosSync.map(l => `• ${l}`).join('<br>');
-      } else {
-        syncAvisoBox.style.display = 'none';
+      if (comConflito.length > 0) {
+        pendingConflito = { contexto: 'sync', itens: comConflito, resto: semConflito, extra: { MANUAIS } };
+        renderConflitoPanel('sync', comConflito);
+        return; // aguarda decisão do usuário — nada é lançado ainda
       }
+
+      commitSync(novos, [], MANUAIS);
 
     } catch(err) {
       msg.className = 'sync-msg er';
