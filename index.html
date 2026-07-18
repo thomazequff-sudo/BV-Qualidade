@@ -264,6 +264,7 @@ tbody tr:hover td{background:rgba(255,255,255,.018)}
       <div class="sync-desc">Arraste o arquivo <strong style="color:#f0c040">F_6_1-3_ENSAIO_DE_PRODUTO_ACABADO_-_2026.xlsm</strong> aqui ou clique no botão para atualizar o dashboard com os dados mais recentes.</div>
       <div class="sync-stats" id="syncStats">Última sincronização: <strong>nenhuma</strong></div>
       <div class="sync-msg" id="syncMsg"></div>
+      <div id="syncLoteAvisoBox" style="display:none;background:rgba(230,126,34,.08);border:1px solid rgba(230,126,34,.28);border-radius:8px;padding:10px 14px;margin-top:8px;font-size:12px;color:#e67e22;line-height:1.6"></div>
     </div>
     <div style="display:flex;flex-direction:column;gap:8px;flex-shrink:0">
       <button class="btn-sync" onclick="pwdAsk('sync',null,'Sincronizar planilha','Digite a senha para carregar dados da planilha')">
@@ -428,8 +429,10 @@ tbody tr:hover td{background:rgba(255,255,255,.018)}
           <span class="import-msg" id="importMsg"></span>
         </div>
       </div>
+      <div id="loteAvisoBox" style="display:none;background:rgba(230,126,34,.08);border:1px solid rgba(230,126,34,.28);border-radius:8px;padding:10px 14px;margin-top:10px;font-size:12px;color:#e67e22;line-height:1.6"></div>
     </div>
   </div>
+
 
   <!-- TAB 2: TABELA RÁPIDA -->
   <div class="ftab-page" id="ftab-batch">
@@ -511,7 +514,7 @@ tbody tr:hover td{background:rgba(255,255,255,.018)}
   <div class="tbox">
     <div class="thd"><div class="thtit">Base de Dados — Ensaios de Resistência</div><div class="tcnt" id="tCnt">—</div></div>
     <div class="tw" style="max-height:580px">
-      <table><thead><tr><th>Mês</th><th>Produto</th><th>Lote</th><th>Idade</th><th>Resultado (MPa)</th><th>Lim. Mín.</th><th>Lim. Máx.</th><th>Status</th><th style="width:40px"></th></tr></thead><tbody id="tBody"></tbody></table>
+      <table><thead><tr><th>Registro</th><th>Mês</th><th>Produto</th><th>Lote</th><th>Idade</th><th>Resultado (MPa)</th><th>Lim. Mín.</th><th>Lim. Máx.</th><th>Status</th><th style="width:40px"></th></tr></thead><tbody id="tBody"></tbody></table>
     </div>
   </div>
 </div>
@@ -767,6 +770,10 @@ const fmtMes = mes => {
   return dt.toLocaleDateString('pt-BR',{month:'short',year:'numeric'}).replace('. ','/').replace(/^./,c=>c.toUpperCase());
 };
 const limitsOf = p => { const d = DATA.find(r => r.p === p); return d ? {mn:d.mn, mx:d.mx} : null; };
+
+// Detecta se produto+lote já existe nos 843 registros originais (que nunca têm Registro).
+// Usado para avisar sobre possível reprocessamento/replicação do mesmo ensaio, sem bloquear a operação.
+const loteNoSeedOriginal = (p, l) => SEED.some(r => r.p === p && r.l === l);
 
 function getF() {
   const anoEl = document.getElementById('sAno');
@@ -1108,6 +1115,20 @@ function finalizarImport(novos, erros) {
   msg.textContent='✔ '+unicos.length+' registros importados!'
     + (duplicados ? ' ('+duplicados+' duplicados ignorados)' : '')
     + (erros.length?' ('+erros.length+' linhas ignoradas por erro)':'');
+
+  // Aviso não-bloqueante: lote já existe nos 843 registros originais (possível reprocessamento)
+  const avisoBox = document.getElementById('loteAvisoBox');
+  const lotesRepetidos = [...new Set(
+    unicos.filter(n => loteNoSeedOriginal(n.p, n.l)).map(n => `${n.p} — Lote ${n.l}`)
+  )];
+  if (lotesRepetidos.length) {
+    avisoBox.style.display = 'block';
+    avisoBox.innerHTML = `⚠ ${lotesRepetidos.length} lote(s) importado(s) já existe(m) na base original (843) — pode ser reprocessamento do mesmo ensaio:<br>` +
+      lotesRepetidos.map(l => `• ${l}`).join('<br>');
+  } else {
+    avisoBox.style.display = 'none';
+  }
+
   document.getElementById('mapSection').style.display='none';
   importedRows=[]; importedCols=[];
   document.getElementById('fileInput').value='';
@@ -1243,13 +1264,16 @@ function rTable(){
     .filter(d=>(p==='T'||d.p===p)&&(s==='T'||(s==='A'?d.ok:s==='L'?statusOf(d)==='low':s==='H'?statusOf(d)==='high':!d.ok))&&(!b||d.l.toLowerCase().includes(b)))
     .sort((a,b)=>b.mes.localeCompare(a.mes)||a.p.localeCompare(b.p));
   document.getElementById('tCnt').textContent=rows.length+' registros';
-  const seedLen = SEED.length;
+  // EXTRAS é sempre a cauda de DATA — usar isso em vez de SEED.length fixo,
+  // que fica incorreto assim que o SEED é filtrado por meses sincronizados
+  const extrasStart = DATA.length - EXTRAS.length;
   document.getElementById('tBody').innerHTML=rows.map(d=>{
-    const isExtra = d._idx >= seedLen; // só extras podem ser excluídos
+    const isExtra = d._idx >= extrasStart; // só extras podem ser excluídos
     const delBtn = isExtra
       ? `<button class="btn-del" onclick="askDelete(${d._idx})" title="Excluir este ensaio">✕</button>`
       : `<span title="Registro original — não pode ser excluído" style="color:var(--gy3);font-size:11px;padding:2px 7px">🔒</span>`;
     return `<tr>
+      <td style="color:var(--gy3);font-size:11px">${d.reg||'—'}</td>
       <td>${d.ml}</td><td>${d.p}</td><td>${d.l}</td>
       <td style="color:var(--gy3)">${d.id}d</td>
       <td class="${statusValClass(statusOf(d))}">${d.r.toFixed(3)}</td>
@@ -1260,7 +1284,7 @@ function rTable(){
     </tr>`;
   }).join('');
 }
-function doCSV(){const p=document.getElementById('tP').value,s=document.getElementById('tSt').value;const rows=DATA.filter(d=>(p==='T'||d.p===p)&&(s==='T'||(s==='A'?d.ok:!d.ok)));const h='Mês,Produto,Lote,Idade (dias),Tipo,Lim.Min (MPa),Lim.Max (MPa),Resultado (MPa),Status';const body=rows.map(d=>[d.ml,d.p,d.l,d.id,d.t,d.mn,d.mx,d.r,statusLabel(statusOf(d))].join(',')).join('\n');const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(h+'\n'+body);a.download='bela_vista_ensaios.csv';a.click();}
+function doCSV(){const p=document.getElementById('tP').value,s=document.getElementById('tSt').value;const rows=DATA.filter(d=>(p==='T'||d.p===p)&&(s==='T'||(s==='A'?d.ok:!d.ok)));const h='Registro,Mês,Produto,Lote,Idade (dias),Tipo,Lim.Min (MPa),Lim.Max (MPa),Resultado (MPa),Status';const body=rows.map(d=>[d.reg||'',d.ml,d.p,d.l,d.id,d.t,d.mn,d.mx,d.r,statusLabel(statusOf(d))].join(',')).join('\n');const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(h+'\n'+body);a.download='bela_vista_ensaios.csv';a.click();}
 
 // ══ RESET ══
 function resetData(){
@@ -1602,6 +1626,19 @@ function processSync(file) {
         .join(' · ');
       msg.className = 'sync-msg ok';
       msg.textContent = `✔ Sincronizado! ${novos.length} registros. ${resumo}`;
+
+      // Aviso não-bloqueante: lote já existe nos 843 registros originais (possível reprocessamento)
+      const syncAvisoBox = document.getElementById('syncLoteAvisoBox');
+      const lotesRepetidosSync = [...new Set(
+        novos.filter(n => loteNoSeedOriginal(n.p, n.l)).map(n => `${n.p} — Lote ${n.l}`)
+      )];
+      if (lotesRepetidosSync.length) {
+        syncAvisoBox.style.display = 'block';
+        syncAvisoBox.innerHTML = `⚠ ${lotesRepetidosSync.length} lote(s) sincronizado(s) já existe(m) na base original (843) — pode ser reprocessamento do mesmo ensaio:<br>` +
+          lotesRepetidosSync.map(l => `• ${l}`).join('<br>');
+      } else {
+        syncAvisoBox.style.display = 'none';
+      }
 
     } catch(err) {
       msg.className = 'sync-msg er';
