@@ -629,19 +629,29 @@ try { localStorage.removeItem('bv_data'); } catch(e) {}
 
 let EXTRAS = [];
 let MESES_SYNC = new Set();
+let LOTES_EXCLUIDOS = new Set(); // "produto|lote" que o usuário optou por NÃO lançar no painel de conflito — preserva o valor original mesmo em meses sincronizados
 let DATA = [...SEED];
+
+// Filtra o SEED da mesma forma em todo lugar: remove meses cobertos pelo sync,
+// EXCETO lotes que o usuário explicitamente escolheu preservar (LOTES_EXCLUIDOS)
+const chaveSeedLote = r => `${r.p}|${r.l}`;
+function seedFiltrado(mesesSync, lotesExcluidos) {
+  return SEED.filter(r => !mesesSync.has(r.mes) || lotesExcluidos.has(chaveSeedLote(r)));
+}
 
 // ── Carregar do localStorage (fallback offline) ──
 function loadFromLocalStorage() {
   try { const e = localStorage.getItem('bv_extras'); EXTRAS = e ? JSON.parse(e) : []; } catch(e) { EXTRAS = []; }
   try { const ms = localStorage.getItem('bv_meses_sync'); MESES_SYNC = ms ? new Set(JSON.parse(ms)) : new Set(); } catch(e) { MESES_SYNC = new Set(); }
-  DATA = [...SEED.filter(r => !MESES_SYNC.has(r.mes)), ...EXTRAS];
+  try { const le = localStorage.getItem('bv_lotes_excluidos'); LOTES_EXCLUIDOS = le ? new Set(JSON.parse(le)) : new Set(); } catch(e) { LOTES_EXCLUIDOS = new Set(); }
+  DATA = [...seedFiltrado(MESES_SYNC, LOTES_EXCLUIDOS), ...EXTRAS];
 }
 
 // ── Salvar no localStorage (cache local) ──
 const saveLocalStorage = () => {
   try { localStorage.setItem('bv_extras', JSON.stringify(EXTRAS)); } catch(e) {}
   try { localStorage.setItem('bv_meses_sync', JSON.stringify([...MESES_SYNC])); } catch(e) {}
+  try { localStorage.setItem('bv_lotes_excluidos', JSON.stringify([...LOTES_EXCLUIDOS])); } catch(e) {}
 };
 
 // ── Salvar no Supabase ──
@@ -695,6 +705,17 @@ async function saveToSupabase(registros, mesesSync) {
         body: JSON.stringify({ chave: 'meses_sync', valor: JSON.stringify([...mesesSync]) }) }
     );
 
+    // 3b. Salvar lotes_excluidos (lotes que o usuário optou por não lançar — precisa persistir
+    // para o SEED continuar protegido nesses casos mesmo depois de recarregar a página)
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/config`,
+      { method: 'POST',
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY,
+                   'Content-Type': 'application/json',
+                   'Prefer': 'resolution=merge-duplicates,return=minimal' },
+        body: JSON.stringify({ chave: 'lotes_excluidos', valor: JSON.stringify([...LOTES_EXCLUIDOS]) }) }
+    );
+
     // 4. Salvar timestamp da última sincronização (para qualquer visitante ver, não só quem sincronizou)
     await fetch(
       `${SUPABASE_URL}/rest/v1/config`,
@@ -736,22 +757,25 @@ async function loadFromSupabase() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const rows = await res.json();
 
-    // Buscar meses_sync + ultima_sync
+    // Buscar meses_sync + ultima_sync + lotes_excluidos
     const res2 = await fetch(
-      `${SUPABASE_URL}/rest/v1/config?chave=in.(meses_sync,ultima_sync)&select=chave,valor`,
+      `${SUPABASE_URL}/rest/v1/config?chave=in.(meses_sync,ultima_sync,lotes_excluidos)&select=chave,valor`,
       { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }
     );
     const cfg = await res2.json();
-    const cfgMeses  = cfg.find(c => c.chave === 'meses_sync');
-    const cfgUltima = cfg.find(c => c.chave === 'ultima_sync');
+    const cfgMeses      = cfg.find(c => c.chave === 'meses_sync');
+    const cfgUltima     = cfg.find(c => c.chave === 'ultima_sync');
+    const cfgExcluidos  = cfg.find(c => c.chave === 'lotes_excluidos');
     const mesesArr = cfgMeses ? JSON.parse(cfgMeses.valor) : [];
+    const excluidosArr = cfgExcluidos ? JSON.parse(cfgExcluidos.valor) : [];
 
     EXTRAS = rows.map(r => {
       const { id, id_idade, _planilha, _manual, ...rest } = r;
       return { ...rest, id: id_idade || 28, _planilha: !!_planilha, _manual: !!_manual };
     });
     MESES_SYNC = new Set(mesesArr);
-    DATA = [...SEED.filter(r => !MESES_SYNC.has(r.mes)), ...EXTRAS];
+    LOTES_EXCLUIDOS = new Set(excluidosArr);
+    DATA = [...seedFiltrado(MESES_SYNC, LOTES_EXCLUIDOS), ...EXTRAS];
 
     // Exibir a data real da última sincronização (vinda da nuvem, vale para qualquer visitante)
     const statsEl = document.getElementById('syncStats');
@@ -1333,7 +1357,8 @@ function resetData(){
 function doResetConfirmed(){
   localStorage.removeItem('bv_extras');
   localStorage.removeItem('bv_meses_sync');
-  EXTRAS=[]; MESES_SYNC=new Set(); DATA=[...SEED]; sess=[];
+  localStorage.removeItem('bv_lotes_excluidos');
+  EXTRAS=[]; MESES_SYNC=new Set(); LOTES_EXCLUIDOS=new Set(); DATA=[...SEED]; sess=[];
   initSel(); render(); rTable(); updSess();
   saveExtras(); // também limpa a nuvem (Supabase), já que EXTRAS agora está vazio
   alert('Pronto! 843 registros originais restaurados.');
@@ -1515,13 +1540,16 @@ function commitSync(novosFinal, excluidos, MANUAIS) {
   const mesesPlanilha = new Set([...novosFinal, ...excluidos].map(r => r.mes));
   MESES_SYNC = mesesPlanilha;
 
-  const chaveSeed = r => `${r.p}|${r.l}`;
-  const chavesExcluidas = new Set(excluidos.map(chaveSeed));
-  const SEED_FILTRADO = SEED.filter(r => !mesesPlanilha.has(r.mes) || chavesExcluidas.has(chaveSeed(r)));
+  // Acumular com exclusões de sincronizações anteriores — não sobrescrever,
+  // senão a proteção de um lote excluído hoje se perde na próxima sincronização
+  const chavesExcluidasNovas = new Set(excluidos.map(chaveSeedLote));
+  LOTES_EXCLUIDOS = new Set([...LOTES_EXCLUIDOS, ...chavesExcluidasNovas]);
+
+  const SEED_FILTRADO = seedFiltrado(MESES_SYNC, LOTES_EXCLUIDOS);
 
   EXTRAS = [...novosFinal, ...MANUAIS];
   DATA = [...SEED_FILTRADO, ...EXTRAS];
-  saveExtras(); // salva EXTRAS + MESES_SYNC no localStorage e na nuvem
+  saveExtras(); // salva EXTRAS + MESES_SYNC + LOTES_EXCLUIDOS no localStorage e na nuvem
   initSel(); render(); rTable(); updSess();
 
   const agora = new Date().toLocaleString('pt-BR',
