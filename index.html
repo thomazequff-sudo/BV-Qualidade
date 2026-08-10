@@ -881,7 +881,12 @@ const fmtMes = mes => {
   const dt = new Date(mes + '-02');
   return dt.toLocaleDateString('pt-BR',{month:'short',year:'numeric'}).replace('. ','/').replace(/^./,c=>c.toUpperCase());
 };
-const limitsOf = p => { const d = DATA.find(r => r.p === p); return d ? {mn:d.mn, mx:d.mx} : null; };
+const limitsOf = p => {
+  const recs = DATA.filter(r => r.p === p);
+  if (!recs.length) return null;
+  const maisRecente = recs.reduce((a,b) => b.mes > a.mes ? b : a);
+  return {mn: maisRecente.mn, mx: maisRecente.mx};
+};
 
 // Detecta se produto+lote já existe nos 843 registros originais (que nunca têm Registro).
 // Usado para avisar sobre possível reprocessamento/replicação do mesmo ensaio, sem bloquear a operação.
@@ -953,7 +958,7 @@ function render() {
   document.getElementById('kM').textContent=med.toFixed(2);
   document.getElementById('kFora').textContent=(pctFora*100).toFixed(1)+'%';
   const sb=document.getElementById('specBar');
-  if(p!=='T'&&data.length){sb.style.display='flex';document.getElementById('spProd').textContent=p;document.getElementById('spMin').textContent=data[0].mn+' MPa';document.getElementById('spMax').textContent=data[0].mx+' MPa';document.getElementById('spCnt').textContent=n+' ensaios';}
+  if(p!=='T'&&data.length){const ultimo=data[data.length-1];sb.style.display='flex';document.getElementById('spProd').textContent=p;document.getElementById('spMin').textContent=ultimo.mn+' MPa';document.getElementById('spMax').textContent=ultimo.mx+' MPa';document.getElementById('spCnt').textContent=n+' ensaios';}
   else sb.style.display='none';
   dc('lt');
   charts['lt']=new Chart(document.getElementById('cLt'),{type:'line',data:{labels:data.map((_,i)=>i+1),datasets:[{label:'Resultado',data:data.map(d=>d.r),borderColor:'#e74c3c',borderWidth:1.8,pointBackgroundColor:data.map(d=>statusColor(statusOf(d))),pointBorderColor:data.map(d=>statusColor(statusOf(d))),pointRadius:data.length>90?2:4,tension:0,fill:false},{label:'Lim.Min',data:data.map(d=>d.mn),borderColor:'rgba(39,174,96,.55)',borderWidth:1.5,borderDash:[6,4],pointRadius:0,fill:false},{label:'Lim.Max',data:data.map(d=>d.mx),borderColor:'rgba(192,57,43,.55)',borderWidth:1.5,borderDash:[6,4],pointRadius:0,fill:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{title:ctx=>{const d=data[ctx[0].dataIndex];return `Lote ${d.l} · ${d.ml}`;},label:ctx=>`${ctx.dataset.label}: ${ctx.parsed.y.toFixed(3)} MPa`}}},scales:{x:{ticks:{color:GC.tick,font:{size:10}},grid:{color:GC.grid}},y:{ticks:{color:GC.tick,font:{size:10}},grid:{color:GC.grid}}}}});
