@@ -258,6 +258,12 @@ tbody tr:hover td{background:rgba(255,255,255,.018)}
 <!-- DASHBOARD -->
 <div class="page on" id="page-dash">
   <div class="fbar" id="dashFbar">
+    <div class="fg"><div class="fl">Categoria de Ensaio</div><select class="fs" id="sCat" onchange="onCatChange()" style="min-width:190px">
+      <option value="Compressão">Compressão</option>
+      <option value="Aderência">Aderência</option>
+      <option value="Tempo em Aberto Rápido">Tempo em Aberto Rápido</option>
+    </select></div>
+    <div class="fsep"></div>
     <div class="fg"><div class="fl">Produto</div><select class="fs" id="sProd" onchange="render()"></select></div>
     <div class="fsep"></div>
     <div class="fg">
@@ -289,7 +295,7 @@ tbody tr:hover td{background:rgba(255,255,255,.018)}
     <div class="kpi ca"><div class="kl">Rep. Abaixo do Mín</div><div class="kv" id="kRL">—</div><div class="ks">resistência insuficiente</div></div>
     <div class="kpi cr"><div class="kl">Rep. Acima do Máx</div><div class="kv" id="kRH">—</div><div class="ks">acima da especificação</div></div>
     <div class="kpi ca" style="border-top-color:var(--blu2)"><div class="kl">% Aprovação</div><div class="kv" id="kP" style="color:var(--blu2)">—</div><div class="ks">taxa de conformidade</div></div>
-    <div class="kpi cs"><div class="kl">Média Geral</div><div class="kv" id="kM">—</div><div class="ks">MPa</div></div>
+    <div class="kpi cs"><div class="kl">Média Geral</div><div class="kv" id="kM">—</div><div class="ks" id="kMUnit">MPa</div></div>
     <div class="kpi cr" style="border-top-color:#9b59b6"><div class="kl">% Fora da Spec</div><div class="kv" id="kFora" style="color:#a569bd">—</div><div class="ks">acima + abaixo</div></div>
   </div>
   <div class="sh"><div class="st">Variação ponto a ponto por lote</div></div>
@@ -312,7 +318,7 @@ tbody tr:hover td{background:rgba(255,255,255,.018)}
     <div class="cb2"><div class="ch"><div class="ct">% Aprovação / Mês</div></div><div class="cw" style="height:195px"><canvas id="cAp"></canvas></div></div>
     <div class="cb2">
       <div class="ch">
-        <div class="ct">Média de Resistência (MPa)</div>
+        <div class="ct" id="cMdTitle">Média de Resistência (MPa)</div>
         <div class="leg"><div class="li"><div class="ls" style="background:#e74c3c"></div>Média</div><div class="li"><div class="ls" style="background:#27ae60;opacity:.55"></div>Min</div><div class="li"><div class="ls" style="background:#c0392b;opacity:.55"></div>Máx</div></div>
       </div>
       <div class="cw" style="height:175px"><canvas id="cMd"></canvas></div>
@@ -377,7 +383,7 @@ tbody tr:hover td{background:rgba(255,255,255,.018)}
           <div class="map-row"><div class="map-lbl">Mês de Ensaio<span>*</span></div><select class="fs" id="mapMes" style="min-width:0"></select></div>
           <div class="map-row"><div class="map-lbl">Produto<span>*</span></div><select class="fs" id="mapProd" style="min-width:0"></select></div>
           <div class="map-row"><div class="map-lbl">Lote<span>*</span></div><select class="fs" id="mapLote" style="min-width:0"></select></div>
-          <div class="map-row"><div class="map-lbl">Resultado (MPa)<span>*</span></div><select class="fs" id="mapRes" style="min-width:0"></select></div>
+          <div class="map-row"><div class="map-lbl">Resultado<span>*</span></div><select class="fs" id="mapRes" style="min-width:0"></select></div>
           <div class="map-row"><div class="map-lbl">Lim. Mínimo</div><select class="fs" id="mapLmin" style="min-width:0"></select></div>
           <div class="map-row"><div class="map-lbl">Lim. Máximo</div><select class="fs" id="mapLmax" style="min-width:0"></select></div>
           <div class="map-row"><div class="map-lbl">Idade (dias)</div><select class="fs" id="mapIdade" style="min-width:0"></select></div>
@@ -476,9 +482,9 @@ tbody tr:hover td{background:rgba(255,255,255,.018)}
         <div class="fg"><div class="finl">Lote<span>*</span></div><input class="fi" type="text" id="fL" placeholder="Ex: 36400"></div>
         <div class="fg"><div class="finl">Idade (dias)</div><input class="fi" type="number" id="fId" value="28" min="1"></div>
         <div class="fg"><div class="finl">Tipo de Ensaio</div><input class="fi" type="text" id="fTp" value="Compressão (MPa)"></div>
-        <div class="fg"><div class="finl">Lim. Mínimo (MPa)<span>*</span></div><input class="fi" type="number" id="fMn" step="0.1" placeholder="Ex: 5.0" oninput="prev()"></div>
-        <div class="fg"><div class="finl">Lim. Máximo (MPa)<span>*</span></div><input class="fi" type="number" id="fMx" step="0.1" placeholder="Ex: 8.0" oninput="prev()"></div>
-        <div class="fg s2"><div class="finl">Resultado (MPa)<span>*</span></div><input class="fi" type="number" id="fRs" step="0.001" placeholder="Ex: 6.543" oninput="prev()" style="font-size:15px;font-weight:700"></div>
+        <div class="fg"><div class="finl">Lim. Mínimo (<span id="fUnMn">MPa</span>)<span>*</span></div><input class="fi" type="number" id="fMn" step="0.1" placeholder="Ex: 5.0" oninput="prev()"></div>
+        <div class="fg"><div class="finl">Lim. Máximo (<span id="fUnMx">MPa</span>)<span>*</span></div><input class="fi" type="number" id="fMx" step="0.1" placeholder="Ex: 8.0" oninput="prev()"></div>
+        <div class="fg s2"><div class="finl">Resultado (<span id="fUnRs">MPa</span>)<span>*</span></div><input class="fi" type="number" id="fRs" step="0.001" placeholder="Ex: 6.543" oninput="prev()" style="font-size:15px;font-weight:700"></div>
         <div class="fg s2"><div class="finl">Pré-visualização</div><div class="prev" id="fPv">Preencha Resultado e Limites</div></div>
       </div>
       <div class="frow">
@@ -501,6 +507,12 @@ tbody tr:hover td{background:rgba(255,255,255,.018)}
 <!-- BASE DE DADOS -->
 <div class="page" id="page-dados">
   <div class="tbar">
+    <div class="fg"><div class="fl">Categoria de Ensaio</div><select class="fs" id="tCat" onchange="onTCatChange()" style="min-width:190px">
+      <option value="T">Todas</option>
+      <option value="Compressão">Compressão</option>
+      <option value="Aderência">Aderência</option>
+      <option value="Tempo em Aberto Rápido">Tempo em Aberto Rápido</option>
+    </select></div>
     <div class="fg"><div class="fl">Produto</div><select class="fs" id="tP" onchange="rTable()" style="min-width:155px"></select></div>
     <div class="fg"><div class="fl">Status</div>
       <select class="fs" id="tSt" onchange="rTable()" style="min-width:135px">
@@ -513,7 +525,7 @@ tbody tr:hover td{background:rgba(255,255,255,.018)}
   <div class="tbox">
     <div class="thd"><div class="thtit">Base de Dados — Ensaios de Resistência</div><div class="tcnt" id="tCnt">—</div></div>
     <div class="tw" style="max-height:580px">
-      <table><thead><tr><th>Registro</th><th>Mês</th><th>Produto</th><th>Lote</th><th>Idade</th><th>Resultado (MPa)</th><th>Lim. Mín.</th><th>Lim. Máx.</th><th>Status</th><th style="width:40px"></th></tr></thead><tbody id="tBody"></tbody></table>
+      <table><thead><tr><th>Registro</th><th>Mês</th><th>Produto</th><th>Lote</th><th>Idade</th><th id="tResHead">Resultado</th><th>Lim. Mín.</th><th>Lim. Máx.</th><th>Status</th><th style="width:40px"></th></tr></thead><tbody id="tBody"></tbody></table>
     </div>
   </div>
 </div>
@@ -872,8 +884,51 @@ const statusLabel = s => s==='ok' ? 'Aprovado' : s==='low' ? 'Rep. Abaixo' : 'Re
 const statusClass = s => s==='ok' ? 'bvok' : s==='low' ? 'bvlow' : 'bver';
 const statusValClass = s => s==='ok' ? 'vok' : s==='low' ? 'vlow' : 'ver';
 const statusColor = s => s==='ok' ? '#2ecc71' : s==='low' ? '#e67e22' : '#e74c3c';
+
+// Catálogo de parâmetros de produtos que ainda não têm nenhum ensaio lançado —
+// permite que apareçam nos filtros/formulários e que limitsOf() já saiba o limite certo
+// desde a primeira importação, sem precisar perguntar via painel de conflito de limites.
+const PRODUTOS_PARAMS = {
+  'Bela Coat Branca':              { ensaio:'Aderência (MPa)',              idade:28, mn:0.5, mx:1   },
+  'Bela Coat Cinza':                { ensaio:'Aderência (MPa)',              idade:28, mn:0.5, mx:1   },
+  'Bela Fine':                      { ensaio:'Compressão (MPa)',             idade:14, mn:10,  mx:14  },
+  'Bela Flash':                     { ensaio:'Tempo em Aberto Rápido (min)', idade:0,  mn:15,  mx:25  },
+  'Bela Flex':                      { ensaio:'Aderência (MPa)',              idade:28, mn:0.5, mx:1   },
+  'Bela Pastilhas Fachadas':        { ensaio:'Tempo em Aberto Rápido (min)', idade:0,  mn:15,  mx:25  },
+  'Bela Pastilhas Piscinas':        { ensaio:'Tempo em Aberto Rápido (min)', idade:0,  mn:15,  mx:25  },
+  'Bela Top':                       { ensaio:'Aderência (MPa)',              idade:28, mn:0.5, mx:1   },
+  'Belacola ACI':                   { ensaio:'Tempo em Aberto Rápido (min)', idade:0,  mn:15,  mx:20  },
+  'Belacola ACII':                  { ensaio:'Tempo em Aberto Rápido (min)', idade:0,  mn:20,  mx:30  },
+  'Belacola ACIII Cinza':           { ensaio:'Tempo em Aberto Rápido (min)', idade:0,  mn:20,  mx:30  },
+  'Chapisco Projetado':             { ensaio:'Compressão (MPa)',             idade:28, mn:10,  mx:14  },
+  'Chapisco Rolado':                { ensaio:'Compressão (MPa)',             idade:28, mn:10,  mx:14  },
+  'Emboçoflex Externo Hidrofóbico': { ensaio:'Aderência (MPa)',              idade:28, mn:0.3, mx:0.5 },
+  'Emboçoflex Interno':             { ensaio:'Aderência (MPa)',              idade:28, mn:0.3, mx:0.5 },
+  'Grandes Formatos':               { ensaio:'Tempo em Aberto Rápido (min)', idade:0,  mn:30,  mx:50  },
+  'Rejunte Flexível':               { ensaio:'Compressão (MPa)',             idade:14, mn:10,  mx:14  },
+  'Revestimento Externo Projetado': { ensaio:'Aderência (MPa)',              idade:28, mn:0.3, mx:0.5 },
+  'Super Belacola':                 { ensaio:'Tempo em Aberto Rápido (min)', idade:0,  mn:50,  mx:80  }
+};
+
+// Classifica um Tipo de Ensaio na sua categoria — separa Compressão/Aderência/Tempo em Aberto
+// porque têm faixas de valores e unidades completamente diferentes (MPa vs minutos).
+function categoriaOf(t) {
+  if (!t) return 'Compressão';
+  const tl = t.toLowerCase();
+  if (tl.includes('aderência') || tl.includes('aderencia')) return 'Aderência';
+  if (tl.includes('tempo em aberto')) return 'Tempo em Aberto Rápido';
+  return 'Compressão';
+}
+const unidadeOf = cat => cat === 'Tempo em Aberto Rápido' ? 'min' : 'MPa';
+
 const uniq = (arr, fn) => [...new Set(arr.map(fn))].sort();
-const prods = () => uniq(DATA, d => d.p);
+const prods = (cat) => {
+  const doData = DATA.filter(d => !cat || categoriaOf(d.t) === cat).map(d => d.p);
+  const doCatalogo = Object.entries(PRODUTOS_PARAMS)
+    .filter(([,pp]) => !cat || categoriaOf(pp.ensaio) === cat)
+    .map(([nome]) => nome);
+  return [...new Set([...doData, ...doCatalogo])].sort();
+};
 const mesList = () => uniq(DATA, d => d.mes);
 const anosList = () => uniq(DATA, d => d.mes.slice(0,4));
 const mlOf = m => { const d = DATA.find(r => r.mes === m); return d ? d.ml : m; };
@@ -883,9 +938,12 @@ const fmtMes = mes => {
 };
 const limitsOf = p => {
   const recs = DATA.filter(r => r.p === p);
-  if (!recs.length) return null;
-  const maisRecente = recs.reduce((a,b) => b.mes > a.mes ? b : a);
-  return {mn: maisRecente.mn, mx: maisRecente.mx};
+  if (recs.length) {
+    const maisRecente = recs.reduce((a,b) => b.mes > a.mes ? b : a);
+    return {mn: maisRecente.mn, mx: maisRecente.mx};
+  }
+  if (PRODUTOS_PARAMS[p]) return {mn: PRODUTOS_PARAMS[p].mn, mx: PRODUTOS_PARAMS[p].mx};
+  return null;
 };
 
 // Detecta se produto+lote já existe nos 843 registros originais (que nunca têm Registro).
@@ -895,14 +953,16 @@ const loteNoSeedOriginal = (p, l) => SEED.some(r => r.p === p && r.l === l);
 function getF() {
   const anoEl = document.getElementById('sAno');
   return {
+    cat: document.getElementById('sCat').value,
     p: document.getElementById('sProd').value,
     meses: getSelectedMeses(),
     a: anoEl ? anoEl.value : 'T'
   };
 }
 function fd() {
-  const {p,meses,a} = getF();
+  const {cat,p,meses,a} = getF();
   return DATA.filter(d=>
+    categoriaOf(d.t) === cat &&
     (p==='T'||d.p===p) &&
     (a==='T'||d.mes.startsWith(a)) &&
     (meses.length===0||meses.includes(d.mes))
@@ -925,7 +985,7 @@ function initSel() {
     items.forEach(v => { const o=document.createElement('option'); o.value=v; o.textContent=v; el.appendChild(o); });
     if ([...el.options].some(o=>o.value===cur)) el.value=cur;
   }
-  pop('sProd',prods(),'Todos os produtos','T');
+  pop('sProd',prods(document.getElementById('sCat').value),'Todos os produtos','T');
   pop('sAno',anosList(),'Todos os anos','T');
   // Popular multi-select de meses
   buildMsItems();
@@ -934,8 +994,12 @@ function initSel() {
   prods().forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;fP.appendChild(o);});
   const tP=document.getElementById('tP');
   tP.innerHTML='<option value="T">Todos os produtos</option>';
-  prods().forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;tP.appendChild(o);});
+  prods(document.getElementById('tCat') ? document.getElementById('tCat').value : null).forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;tP.appendChild(o);});
   rebuildBatchSelects();
+}
+function onCatChange() {
+  initSel();
+  render();
 }
 
 // ══ CHARTS ══
@@ -944,7 +1008,7 @@ const dc=id=>{if(charts[id]){charts[id].destroy();delete charts[id];}};
 const GC={grid:'rgba(255,255,255,.055)',tick:'#555'};
 
 function render() {
-  const data=fd(); const p=getF().p;
+  const data=fd(); const {p,cat}=getF(); const un=unidadeOf(cat);
   const n=data.length,a=data.filter(d=>d.ok).length;
   const rLow=data.filter(d=>statusOf(d)==='low').length;
   const rHigh=data.filter(d=>statusOf(d)==='high').length;
@@ -956,19 +1020,21 @@ function render() {
   document.getElementById('kRH').textContent=rHigh;
   document.getElementById('kP').textContent=(pct*100).toFixed(1)+'%';
   document.getElementById('kM').textContent=med.toFixed(2);
+  document.getElementById('kMUnit').textContent=un;
+  const cMdTitleEl=document.getElementById('cMdTitle'); if(cMdTitleEl) cMdTitleEl.textContent=`Média de Resistência (${un})`;
   document.getElementById('kFora').textContent=(pctFora*100).toFixed(1)+'%';
   const sb=document.getElementById('specBar');
-  if(p!=='T'&&data.length){const ultimo=data[data.length-1];sb.style.display='flex';document.getElementById('spProd').textContent=p;document.getElementById('spMin').textContent=ultimo.mn+' MPa';document.getElementById('spMax').textContent=ultimo.mx+' MPa';document.getElementById('spCnt').textContent=n+' ensaios';}
+  if(p!=='T'&&data.length){const ultimo=data[data.length-1];sb.style.display='flex';document.getElementById('spProd').textContent=p;document.getElementById('spMin').textContent=ultimo.mn+' '+un;document.getElementById('spMax').textContent=ultimo.mx+' '+un;document.getElementById('spCnt').textContent=n+' ensaios';}
   else sb.style.display='none';
   dc('lt');
-  charts['lt']=new Chart(document.getElementById('cLt'),{type:'line',data:{labels:data.map((_,i)=>i+1),datasets:[{label:'Resultado',data:data.map(d=>d.r),borderColor:'#e74c3c',borderWidth:1.8,pointBackgroundColor:data.map(d=>statusColor(statusOf(d))),pointBorderColor:data.map(d=>statusColor(statusOf(d))),pointRadius:data.length>90?2:4,tension:0,fill:false},{label:'Lim.Min',data:data.map(d=>d.mn),borderColor:'rgba(39,174,96,.55)',borderWidth:1.5,borderDash:[6,4],pointRadius:0,fill:false},{label:'Lim.Max',data:data.map(d=>d.mx),borderColor:'rgba(192,57,43,.55)',borderWidth:1.5,borderDash:[6,4],pointRadius:0,fill:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{title:ctx=>{const d=data[ctx[0].dataIndex];return `Lote ${d.l} · ${d.ml}`;},label:ctx=>`${ctx.dataset.label}: ${ctx.parsed.y.toFixed(3)} MPa`}}},scales:{x:{ticks:{color:GC.tick,font:{size:10}},grid:{color:GC.grid}},y:{ticks:{color:GC.tick,font:{size:10}},grid:{color:GC.grid}}}}});
+  charts['lt']=new Chart(document.getElementById('cLt'),{type:'line',data:{labels:data.map((_,i)=>i+1),datasets:[{label:'Resultado',data:data.map(d=>d.r),borderColor:'#e74c3c',borderWidth:1.8,pointBackgroundColor:data.map(d=>statusColor(statusOf(d))),pointBorderColor:data.map(d=>statusColor(statusOf(d))),pointRadius:data.length>90?2:4,tension:0,fill:false},{label:'Lim.Min',data:data.map(d=>d.mn),borderColor:'rgba(39,174,96,.55)',borderWidth:1.5,borderDash:[6,4],pointRadius:0,fill:false},{label:'Lim.Max',data:data.map(d=>d.mx),borderColor:'rgba(192,57,43,.55)',borderWidth:1.5,borderDash:[6,4],pointRadius:0,fill:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{title:ctx=>{const d=data[ctx[0].dataIndex];return `Lote ${d.l} · ${d.ml}`;},label:ctx=>`${ctx.dataset.label}: ${ctx.parsed.y.toFixed(3)} ${un}`}}},scales:{x:{ticks:{color:GC.tick,font:{size:10}},grid:{color:GC.grid}},y:{ticks:{color:GC.tick,font:{size:10}},grid:{color:GC.grid}}}}});
   const bm={};data.forEach(d=>{if(!bm[d.mes])bm[d.mes]={l:d.ml,n:0,a:0,s:0,mn:d.mn,mx:d.mx,low:0,high:0};const _st=statusOf(d);bm[d.mes].n++;bm[d.mes].a+=d.ok?1:0;bm[d.mes].s+=d.r;if(_st==='low')bm[d.mes].low++;if(_st==='high')bm[d.mes].high++;});
   const mk=Object.keys(bm).sort();
   const mL=mk.map(m=>bm[m].l),mP=mk.map(m=>bm[m].a/bm[m].n*100),mMe=mk.map(m=>bm[m].s/bm[m].n),mMn=mk.map(m=>bm[m].mn),mMx=mk.map(m=>bm[m].mx),mA=mk.map(m=>bm[m].a),mR=mk.map(m=>bm[m].n-bm[m].a);
   const xO={ticks:{color:GC.tick,font:{size:10},maxRotation:45,autoSkip:true,maxTicksLimit:9},grid:{color:GC.grid}};
   const yO={ticks:{color:GC.tick,font:{size:10}},grid:{color:GC.grid}};
   dc('ap');charts['ap']=new Chart(document.getElementById('cAp'),{type:'bar',data:{labels:mL,datasets:[{label:'%',data:mP,backgroundColor:mP.map(v=>v>=80?'rgba(39,174,96,.72)':v>=50?'rgba(230,126,34,.72)':'rgba(231,76,60,.72)'),borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y.toFixed(1)+'%'}}},scales:{x:xO,y:{...yO,min:0,max:105,ticks:{...yO.ticks,callback:v=>v+'%'}}}}});
-  dc('md');charts['md']=new Chart(document.getElementById('cMd'),{type:'line',data:{labels:mL,datasets:[{label:'Média',data:mMe,borderColor:'#e74c3c',borderWidth:2,pointBackgroundColor:'#e74c3c',pointRadius:5,tension:0,fill:false},{label:'Lim.Min',data:mMn,borderColor:'rgba(39,174,96,.48)',borderWidth:1.5,borderDash:[5,4],pointRadius:0,fill:false},{label:'Lim.Max',data:mMx,borderColor:'rgba(192,57,43,.48)',borderWidth:1.5,borderDash:[5,4],pointRadius:0,fill:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': '+c.parsed.y.toFixed(3)+' MPa'}}},scales:{x:xO,y:yO}}});
+  dc('md');charts['md']=new Chart(document.getElementById('cMd'),{type:'line',data:{labels:mL,datasets:[{label:'Média',data:mMe,borderColor:'#e74c3c',borderWidth:2,pointBackgroundColor:'#e74c3c',pointRadius:5,tension:0,fill:false},{label:'Lim.Min',data:mMn,borderColor:'rgba(39,174,96,.48)',borderWidth:1.5,borderDash:[5,4],pointRadius:0,fill:false},{label:'Lim.Max',data:mMx,borderColor:'rgba(192,57,43,.48)',borderWidth:1.5,borderDash:[5,4],pointRadius:0,fill:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': '+c.parsed.y.toFixed(3)+' '+un}}},scales:{x:xO,y:yO}}});
   dc('st');charts['st']=new Chart(document.getElementById('cSt'),{type:'bar',data:{labels:mL,datasets:[{label:'Aprovados',data:mA,backgroundColor:'rgba(39,174,96,.72)',borderWidth:0},{label:'Reprovados',data:mR,backgroundColor:'rgba(231,76,60,.72)',borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,scales:{x:{...xO,stacked:true},y:{...yO,stacked:true}},plugins:{legend:{display:false}}}});
   dc('pi');charts['pi']=new Chart(document.getElementById('cPi'),{type:'doughnut',data:{labels:['Aprovados','Rep. Abaixo do Mín','Rep. Acima do Máx'],datasets:[{data:[a,rLow,rHigh],backgroundColor:['rgba(39,174,96,.78)','rgba(230,126,34,.78)','rgba(231,76,60,.78)'],borderColor:['#1f1f1f','#1f1f1f','#1f1f1f'],borderWidth:2,hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:false,cutout:'63%',plugins:{legend:{display:true,position:'bottom',labels:{color:'#999',font:{size:11},boxWidth:12,padding:13}},tooltip:{callbacks:{label:c=>`${c.label}: ${c.parsed} (${n?(c.parsed/n*100).toFixed(1):0}%)`}}}}});
   dc('ac');let ca=0,cn=0;const cp=mk.map(m=>{ca+=bm[m].a;cn+=bm[m].n;return cn?ca/cn*100:0;});charts['ac']=new Chart(document.getElementById('cAc'),{type:'line',data:{labels:mL,datasets:[{label:'%',data:cp,borderColor:'#2980b9',borderWidth:2,pointBackgroundColor:'#2980b9',pointRadius:4,tension:0.1,fill:{target:'origin',above:'rgba(41,128,185,.08)'}}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y.toFixed(1)+'%'}}},scales:{x:xO,y:{...yO,min:0,max:105,ticks:{...yO.ticks,callback:v=>v+'%'}}}}});
@@ -1106,8 +1172,11 @@ function doImport() {
     const res    = numOf(getMapVal('mapRes', row));
     let mn = numOf(getMapVal('mapLmin', row));
     let mx = numOf(getMapVal('mapLmax', row));
-    const idade  = parseInt(getMapVal('mapIdade', row)) || 28;
-    const tipo   = String(getMapVal('mapTipo', row)||'Compressão (MPa)').trim();
+    const pp = PRODUTOS_PARAMS[prod]; // parâmetros de referência, se o produto já estiver catalogado
+    const idadeRaw = getMapVal('mapIdade', row);
+    const idade  = (idadeRaw !== null && idadeRaw !== undefined && idadeRaw !== '') ? parseInt(idadeRaw) : (pp ? pp.idade : 28);
+    const tipoRaw = getMapVal('mapTipo', row);
+    const tipo   = tipoRaw ? String(tipoRaw).trim() : (pp ? pp.ensaio : 'Compressão (MPa)');
     if (!mesRaw||!prod||!lote||isNaN(res)) { erros.push(i+2); return; }
     // Parsear mês
     let mes;
@@ -1307,6 +1376,10 @@ function onBatchProd(id, recalc=true) {
     document.getElementById('bmn'+id).value = lim.mn;
     document.getElementById('bmx'+id).value = lim.mx;
   }
+  const pp = PRODUTOS_PARAMS[p];
+  const dRecente = DATA.filter(r=>r.p===p).reduce((a,b)=>(!a||b.mes>a.mes)?b:a,null);
+  const idade = dRecente ? dRecente.id : (pp ? pp.idade : null);
+  if (idade !== null && idade !== undefined) document.getElementById('bid'+id).value = idade;
   if (recalc) calcBatchStatus(id);
 }
 
@@ -1341,7 +1414,10 @@ function saveBatch() {
     if(mn>=mx){ erros.push(l||'?'); return; }
     const ml=fmtMes(mes);
     const ok=rs>=mn&&rs<=mx;
-    novos.push({mes,ml,p,l,id:idade,t:'Compressão (MPa)',mn,mx,r:+rs.toFixed(3),ok});
+    const pp=PRODUTOS_PARAMS[p];
+    const dRecente=DATA.filter(r=>r.p===p).reduce((a,b)=>(!a||b.mes>a.mes)?b:a,null);
+    const tipo=dRecente?dRecente.t:(pp?pp.ensaio:'Compressão (MPa)');
+    novos.push({mes,ml,p,l,id:idade,t:tipo,mn,mx,r:+rs.toFixed(3),ok});
   });
   if(novos.length===0){msg.className='batch-msg er';msg.textContent='Nenhuma linha válida. Verifique os campos obrigatórios.';return;}
   pushRegistros(novos);
@@ -1354,10 +1430,27 @@ function saveBatch() {
 }
 
 // ══ REGISTRO ÚNICO ══
-function onPC(){const d=DATA.find(r=>r.p===document.getElementById('fP').value);if(d){document.getElementById('fMn').value=d.mn;document.getElementById('fMx').value=d.mx;prev();}}
+function onPC(){
+  const prod = document.getElementById('fP').value;
+  if (!prod) return;
+  const lim = limitsOf(prod);
+  const pp = PRODUTOS_PARAMS[prod];
+  const dRecente = DATA.filter(r=>r.p===prod).reduce((a,b)=> (!a || b.mes>a.mes) ? b : a, null);
+  const tipo = dRecente ? dRecente.t : (pp ? pp.ensaio : 'Compressão (MPa)');
+  const idade = dRecente ? dRecente.id : (pp ? pp.idade : 28);
+  if (lim) { document.getElementById('fMn').value=lim.mn; document.getElementById('fMx').value=lim.mx; }
+  document.getElementById('fTp').value = tipo;
+  document.getElementById('fId').value = idade;
+  const un = unidadeOf(categoriaOf(tipo));
+  document.getElementById('fUnMn').textContent = un;
+  document.getElementById('fUnMx').textContent = un;
+  document.getElementById('fUnRs').textContent = un;
+  prev();
+}
 function prev(){const rs=parseFloat(document.getElementById('fRs').value),mn=parseFloat(document.getElementById('fMn').value),mx=parseFloat(document.getElementById('fMx').value),box=document.getElementById('fPv');if(!isNaN(rs)&&!isNaN(mn)&&!isNaN(mx)){const st=rs>=mn&&rs<=mx?'ok':rs<mn?'low':'high';
     const stLabel=st==='ok'?'✔ APROVADO':st==='low'?'✗ REPROVADO — Abaixo do Mín':'✗ REPROVADO — Acima do Máx';
-    box.innerHTML='<strong style="color:'+statusColor(st)+';font-size:15px">'+stLabel+'</strong> &nbsp; Resultado: <strong style="color:#fff">'+rs.toFixed(3)+' MPa</strong> &nbsp; Spec: '+mn+'–'+mx+' MPa';}else{box.textContent='Preencha Resultado e Limites';}}
+    const un=unidadeOf(categoriaOf(document.getElementById('fTp').value));
+    box.innerHTML='<strong style="color:'+statusColor(st)+';font-size:15px">'+stLabel+'</strong> &nbsp; Resultado: <strong style="color:#fff">'+rs.toFixed(3)+' '+un+'</strong> &nbsp; Spec: '+mn+'–'+mx+' '+un;}else{box.textContent='Preencha Resultado e Limites';}}
 
 let sess=[];
 function salvar(){
@@ -1381,14 +1474,17 @@ function updSess(){
 
 // ══ TABELA ══
 function rTable(){
-  const p=document.getElementById('tP').value,
+  const cat=document.getElementById('tCat').value,
+        p=document.getElementById('tP').value,
         s=document.getElementById('tSt').value,
         b=document.getElementById('tBs').value.trim().toLowerCase();
   // Construir lista com índice original no DATA para exclusão
   const rows=DATA.map((d,i)=>({...d,_idx:i}))
-    .filter(d=>(p==='T'||d.p===p)&&(s==='T'||(s==='A'?d.ok:s==='L'?statusOf(d)==='low':s==='H'?statusOf(d)==='high':!d.ok))&&(!b||d.l.toLowerCase().includes(b)))
+    .filter(d=>(cat==='T'||categoriaOf(d.t)===cat)&&(p==='T'||d.p===p)&&(s==='T'||(s==='A'?d.ok:s==='L'?statusOf(d)==='low':s==='H'?statusOf(d)==='high':!d.ok))&&(!b||d.l.toLowerCase().includes(b)))
     .sort((a,b)=>b.mes.localeCompare(a.mes)||a.p.localeCompare(b.p));
   document.getElementById('tCnt').textContent=rows.length+' registros';
+  const resHead = document.getElementById('tResHead');
+  if (resHead) resHead.textContent = cat==='T' ? 'Resultado' : `Resultado (${unidadeOf(cat)})`;
   // EXTRAS é sempre a cauda de DATA — usar isso em vez de SEED.length fixo,
   // que fica incorreto assim que o SEED é filtrado por meses sincronizados
   const extrasStart = DATA.length - EXTRAS.length;
@@ -1409,7 +1505,11 @@ function rTable(){
     </tr>`;
   }).join('');
 }
-function doCSV(){const p=document.getElementById('tP').value,s=document.getElementById('tSt').value;const rows=DATA.filter(d=>(p==='T'||d.p===p)&&(s==='T'||(s==='A'?d.ok:!d.ok)));const h='Registro,Mês,Produto,Lote,Idade (dias),Tipo,Lim.Min (MPa),Lim.Max (MPa),Resultado (MPa),Status';const body=rows.map(d=>[d.reg||'',d.ml,d.p,d.l,d.id,d.t,d.mn,d.mx,d.r,statusLabel(statusOf(d))].join(',')).join('\n');const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(h+'\n'+body);a.download='bela_vista_ensaios.csv';a.click();}
+function onTCatChange() {
+  initSel();
+  rTable();
+}
+function doCSV(){const cat=document.getElementById('tCat').value,p=document.getElementById('tP').value,s=document.getElementById('tSt').value;const rows=DATA.filter(d=>(cat==='T'||categoriaOf(d.t)===cat)&&(p==='T'||d.p===p)&&(s==='T'||(s==='A'?d.ok:!d.ok)));const h='Registro,Mês,Produto,Lote,Idade (dias),Tipo,Lim.Min,Lim.Max,Resultado,Status';const body=rows.map(d=>[d.reg||'',d.ml,d.p,d.l,d.id,d.t,d.mn,d.mx,d.r,statusLabel(statusOf(d))].join(',')).join('\n');const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(h+'\n'+body);a.download='bela_vista_ensaios.csv';a.click();}
 
 // ══ RESET ══
 function resetData(){
@@ -1512,10 +1612,11 @@ function askDelete(dataIdx) {
   const d = DATA[dataIdx];
   if (!d) return;
   pendingDelIdx = dataIdx;
+  const un = unidadeOf(categoriaOf(d.t));
   document.getElementById('delDetail').innerHTML =
     `<strong>Mês:</strong> ${d.ml} &nbsp; <strong>Produto:</strong> ${d.p} &nbsp; <strong>Lote:</strong> ${d.l}<br>` +
-    `<strong>Resultado:</strong> ${d.r.toFixed(3)} MPa &nbsp; ` +
-    `<strong>Spec:</strong> ${d.mn}–${d.mx} MPa &nbsp; ` +
+    `<strong>Resultado:</strong> ${d.r.toFixed(3)} ${un} &nbsp; ` +
+    `<strong>Spec:</strong> ${d.mn}–${d.mx} ${un} &nbsp; ` +
     `<strong>Status:</strong> ${statusLabel(statusOf(d))}`;
   document.getElementById('delModal').style.display = 'flex';
 }
@@ -1642,7 +1743,7 @@ function renderConflitoPanel(itens) {
       <input type="checkbox" class="conflito-chk" data-i="${i}" onchange="atualizarContadorConflito()">
       <span style="min-width:120px">${n.p}</span>
       <span style="color:var(--gy)">Lote ${n.l}</span>
-      <span style="color:var(--gy);margin-left:auto">${n.r.toFixed(3)} MPa</span>
+      <span style="color:var(--gy);margin-left:auto">${n.r.toFixed(3)} ${unidadeOf(categoriaOf(n.t))}</span>
     </label>`).join('');
   atualizarContadorConflito();
   document.getElementById('conflitoImportBox').style.display = 'block';
