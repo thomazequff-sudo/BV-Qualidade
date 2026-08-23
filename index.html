@@ -1316,12 +1316,24 @@ function commitImport(unicos, duplicados, erros) {
     document.getElementById('mapSection').style.display='none';
     return;
   }
+  // Auto-switch categoria para mostrar os registros importados imediatamente
+  const catImportada = unicos.length ? categoriaOf(unicos[0].t) : null;
+  const todosMesmaCategoria = catImportada && unicos.every(u => categoriaOf(u.t) === catImportada);
+  const sCatEl = document.getElementById('sCat');
+  if (todosMesmaCategoria && sCatEl && sCatEl.value !== catImportada) {
+    sCatEl.value = catImportada;
+  }
+
   pushRegistros(unicos);
   sess = [...unicos.slice().reverse(), ...sess];
+
+  const catMsg = todosMesmaCategoria && catImportada !== 'Compressão'
+    ? ` — categoria alterada para "${catImportada}"` : '';
   msg.className='import-msg ok';
   msg.textContent='✔ '+unicos.length+' registros importados!'
     + (duplicados ? ' ('+duplicados+' duplicados ignorados)' : '')
-    + (erros.length?' ('+erros.length+' linhas ignoradas por erro)':'');
+    + (erros.length?' ('+erros.length+' linhas ignoradas por erro)':'')
+    + catMsg;
 
   document.getElementById('mapSection').style.display='none';
   importedRows=[]; importedCols=[];
