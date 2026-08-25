@@ -656,6 +656,7 @@ let INDICADORES_MESES_OCULTOS = new Set(); // meses (YYYY-MM) ocultos do gráfic
 try { localStorage.removeItem('bv_data'); } catch(e) {}
 
 let EXTRAS = [];
+let PROD_FAM_MAP = {}; // mapa persistente produto→família, acumula via importações
 let MESES_SYNC = new Set();
 let LOTES_EXCLUIDOS = new Set(); // "produto|lote" que o usuário optou por NÃO lançar no painel de conflito — preserva o valor original mesmo em meses sincronizados
 let DATA = SEED.map(d=>({...d,t:normT(d.t)}));
@@ -673,6 +674,7 @@ function loadFromLocalStorage() {
   try { const ms = localStorage.getItem('bv_meses_sync'); MESES_SYNC = ms ? new Set(JSON.parse(ms)) : new Set(); } catch(e) { MESES_SYNC = new Set(); }
   try { const le = localStorage.getItem('bv_lotes_excluidos'); LOTES_EXCLUIDOS = le ? new Set(JSON.parse(le)) : new Set(); } catch(e) { LOTES_EXCLUIDOS = new Set(); }
   try { const ie = localStorage.getItem('bv_indicadores_extras'); INDICADORES_EXTRAS = ie ? JSON.parse(ie) : []; } catch(e) { INDICADORES_EXTRAS = []; }
+  try { const pfm = localStorage.getItem('bv_prod_fam_map'); PROD_FAM_MAP = pfm ? JSON.parse(pfm) : {}; } catch(e) { PROD_FAM_MAP = {}; }
   try { const io = localStorage.getItem('bv_indicadores_ocultos'); INDICADORES_MESES_OCULTOS = io ? new Set(JSON.parse(io)) : new Set(); } catch(e) { INDICADORES_MESES_OCULTOS = new Set(); }
   DATA = [...seedFiltrado(MESES_SYNC, LOTES_EXCLUIDOS), ...EXTRAS.map(d=>({...d,t:normT(d.t)}))];
 }
@@ -684,6 +686,7 @@ const saveLocalStorage = () => {
   try { localStorage.setItem('bv_lotes_excluidos', JSON.stringify([...LOTES_EXCLUIDOS])); } catch(e) {}
   try { localStorage.setItem('bv_indicadores_extras', JSON.stringify(INDICADORES_EXTRAS)); } catch(e) {}
   try { localStorage.setItem('bv_indicadores_ocultos', JSON.stringify([...INDICADORES_MESES_OCULTOS])); } catch(e) {}
+  try { localStorage.setItem('bv_prod_fam_map', JSON.stringify(PROD_FAM_MAP)); } catch(e) {}
 };
 
 // ── Indicadores: salvar/carregar da nuvem (tabela config, chave própria) ──
@@ -981,7 +984,7 @@ function fd() {
 
 // ══ PUSH & SAVE ══
 function pushRegistros(novos) {
-  novos.forEach(n => { n._manual=true; n.t=normT(n.t); EXTRAS.push(n); DATA.push(n); });
+  novos.forEach(n => { n._manual=true; n.t=normT(n.t); EXTRAS.push(n); DATA.push(n); if(n.fam && n.p) PROD_FAM_MAP[n.p] = n.fam; });
   saveExtras();
   initSel(); render(); rTable();
   updSess();
@@ -990,10 +993,14 @@ function pushRegistros(novos) {
 // ══ SELECTS ══
 // Constrói mapa produto→família a partir dos registros que já têm fam definida,
 // depois preenche os registros sem fam (SEED legado) com a família correspondente.
+// O mapa é acumulativo: persiste no localStorage entre sessões e importações.
 function patchFamFromExtras() {
-  const map = {};
-  DATA.forEach(d => { if(d.fam && d.p) map[d.p] = d.fam; });
-  DATA.forEach(d => { if(!d.fam && d.p && map[d.p]) d.fam = map[d.p]; });
+  // 1. Atualiza PROD_FAM_MAP a partir de registros atuais que têm fam
+  DATA.forEach(d => { if(d.fam && d.p) PROD_FAM_MAP[d.p] = d.fam; });
+  // 2. Aplica o mapa (inclui histórico de importações anteriores) a todos os registros sem fam
+  DATA.forEach(d => { if(!d.fam && d.p && PROD_FAM_MAP[d.p]) d.fam = PROD_FAM_MAP[d.p]; });
+  // 3. Persiste o mapa atualizado
+  try { localStorage.setItem('bv_prod_fam_map', JSON.stringify(PROD_FAM_MAP)); } catch(e) {}
 }
 
 function initSel() {
