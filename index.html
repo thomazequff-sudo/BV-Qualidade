@@ -658,7 +658,7 @@ try { localStorage.removeItem('bv_data'); } catch(e) {}
 let EXTRAS = [];
 let MESES_SYNC = new Set();
 let LOTES_EXCLUIDOS = new Set(); // "produto|lote" que o usuário optou por NÃO lançar no painel de conflito — preserva o valor original mesmo em meses sincronizados
-let DATA = [...SEED];
+let DATA = SEED.map(d=>({...d,t:normT(d.t)}));
 
 // Filtra o SEED da mesma forma em todo lugar: remove meses cobertos pelo sync,
 // EXCETO lotes que o usuário explicitamente escolheu preservar (LOTES_EXCLUIDOS)
@@ -914,6 +914,7 @@ const PRODUTOS_PARAMS = {
 // Classifica um Tipo de Ensaio na sua categoria — separa Compressão/Aderência/Tempo em Aberto
 // porque têm faixas de valores e unidades completamente diferentes (MPa vs minutos).
 function categoriaOf(t) { return t||''; }
+function normT(t) { return (t||'').replace(/ \(MPa\)$/,'').trim(); }
 const unidadeOf = t => {
   if(!t) return 'MPa';
   const m=t.match(/\((\w+)\)$/); return m?m[1]:'MPa';
