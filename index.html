@@ -879,13 +879,26 @@ async function loadFromSupabase() {
     const mesesArr = cfgMeses ? JSON.parse(cfgMeses.valor) : [];
     const excluidosArr = cfgExcluidos ? JSON.parse(cfgExcluidos.valor) : [];
 
+    // Normalizar cada registro em passo único (try/catch por linha — 1 registro ruim não derruba toda a carga)
     EXTRAS = rows.map(r => {
-      const { id, id_idade, _planilha, _manual, ...rest } = r;
-      return { ...rest, id: id_idade || 28, _planilha: !!_planilha, _manual: !!_manual };
-    }).map(d => ({...d, p: normP(d.p||''), t: normT(d.t||''), fam: d.fam ? normP(d.fam) : d.fam}));
-    MESES_SYNC = new Set(mesesArr);
+      try {
+        const { id, id_idade, _planilha, _manual, ...rest } = r;
+        return {
+          ...rest,
+          id:       id_idade || 28,
+          _planilha: !!_planilha,
+          _manual:   !!_manual,
+          p:   normP(rest.p  || ''),
+          t:   normT(rest.t  || ''),
+          fam: rest.fam ? normP(rest.fam) : rest.fam
+        };
+      } catch(e) { console.warn('[BV] Registro inválido ignorado:', e); return null; }
+    }).filter(Boolean);
+
+    MESES_SYNC     = new Set(mesesArr);
     LOTES_EXCLUIDOS = new Set(excluidosArr);
-    DATA = [...seedFiltrado(MESES_SYNC, LOTES_EXCLUIDOS), ...EXTRAS.map(d=>({...d,t:normT(d.t),p:normP(d.p||''),fam:d.fam?normP(d.fam):d.fam}))];
+    // EXTRAS já estão normalizados — não reaplicar normP/normT aqui
+    DATA = [...seedFiltrado(MESES_SYNC, LOTES_EXCLUIDOS), ...EXTRAS];
 
     // Exibir a data real da última sincronização (vinda da nuvem, vale para qualquer visitante)
     const statsEl = document.getElementById('syncStats');
@@ -899,11 +912,16 @@ async function loadFromSupabase() {
     }
 
     // Banner: dados da nuvem
-    const bannerInfo = cfgUltima ? (() => { try { return JSON.parse(cfgUltima.valor); } catch(e){ return null; } })() : null;
-    showDataBanner('online', bannerInfo || {ts: new Date().toISOString(), n: EXTRAS.length});
+    try {
+      const bannerInfo = cfgUltima ? JSON.parse(cfgUltima.valor) : null;
+      showDataBanner('online', bannerInfo || {ts: new Date().toISOString(), n: EXTRAS.length});
+    } catch(e) {
+      showDataBanner('online', {ts: new Date().toISOString(), n: EXTRAS.length});
+    }
 
-    // Cache local
-    saveLocalStorage();
+    // Nota: não chamamos saveLocalStorage() aqui para evitar race-condition com
+    // loadIndicadoresSupabase() (que roda em paralelo) e para não sobrescrever o
+    // cache local caso um saveToSupabase() esteja em voo ao mesmo tempo.
     hideSyncStatus();
     initSel(); render();
   } catch(err) {
