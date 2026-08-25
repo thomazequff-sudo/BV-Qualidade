@@ -669,12 +669,12 @@ function seedFiltrado(mesesSync, lotesExcluidos) {
 
 // ── Carregar do localStorage (fallback offline) ──
 function loadFromLocalStorage() {
-  try { const e = localStorage.getItem('bv_extras'); EXTRAS = e ? JSON.parse(e) : []; } catch(e) { EXTRAS = []; }
+  try { const e = localStorage.getItem('bv_extras'); EXTRAS = e ? JSON.parse(e).map(d=>({...d,t:normT(d.t)})) : []; } catch(e) { EXTRAS = []; }
   try { const ms = localStorage.getItem('bv_meses_sync'); MESES_SYNC = ms ? new Set(JSON.parse(ms)) : new Set(); } catch(e) { MESES_SYNC = new Set(); }
   try { const le = localStorage.getItem('bv_lotes_excluidos'); LOTES_EXCLUIDOS = le ? new Set(JSON.parse(le)) : new Set(); } catch(e) { LOTES_EXCLUIDOS = new Set(); }
   try { const ie = localStorage.getItem('bv_indicadores_extras'); INDICADORES_EXTRAS = ie ? JSON.parse(ie) : []; } catch(e) { INDICADORES_EXTRAS = []; }
   try { const io = localStorage.getItem('bv_indicadores_ocultos'); INDICADORES_MESES_OCULTOS = io ? new Set(JSON.parse(io)) : new Set(); } catch(e) { INDICADORES_MESES_OCULTOS = new Set(); }
-  DATA = [...seedFiltrado(MESES_SYNC, LOTES_EXCLUIDOS), ...EXTRAS];
+  DATA = [...seedFiltrado(MESES_SYNC, LOTES_EXCLUIDOS), ...EXTRAS.map(d=>({...d,t:normT(d.t)}))];
 }
 
 // ── Salvar no localStorage (cache local) ──
@@ -842,7 +842,7 @@ async function loadFromSupabase() {
     });
     MESES_SYNC = new Set(mesesArr);
     LOTES_EXCLUIDOS = new Set(excluidosArr);
-    DATA = [...seedFiltrado(MESES_SYNC, LOTES_EXCLUIDOS), ...EXTRAS];
+    DATA = [...seedFiltrado(MESES_SYNC, LOTES_EXCLUIDOS), ...EXTRAS.map(d=>({...d,t:normT(d.t)}))];
 
     // Exibir a data real da última sincronização (vinda da nuvem, vale para qualquer visitante)
     const statsEl = document.getElementById('syncStats');
@@ -914,7 +914,19 @@ const PRODUTOS_PARAMS = {
 // Classifica um Tipo de Ensaio na sua categoria — separa Compressão/Aderência/Tempo em Aberto
 // porque têm faixas de valores e unidades completamente diferentes (MPa vs minutos).
 function categoriaOf(t) { return t||''; }
-function normT(t) { return (t||'').replace(/ \(MPa\)$/,'').trim(); }
+function normT(t) {
+  if(!t) return '';
+  t = t.trim();
+  const MAP = {
+    'Compressão (MPa)': 'Compressão',
+    'Aderência (MPa)':  'Aderência',
+    'Tempo em Aberto Rápido (min)': 'T. Ab. Rápido (min)',
+    'Tempo Aberto Rápido (min)':    'T. Ab. Rápido (min)',
+    'Tempo em Aberto Rapido (min)': 'T. Ab. Rápido (min)',
+    'Tempo Aberto Rapido (min)':    'T. Ab. Rápido (min)',
+  };
+  return MAP[t] !== undefined ? MAP[t] : t.replace(/ \(MPa\)$/,'').trim();
+}
 const unidadeOf = t => {
   if(!t) return 'MPa';
   const m=t.match(/\((\w+)\)$/); return m?m[1]:'MPa';
@@ -969,14 +981,23 @@ function fd() {
 
 // ══ PUSH & SAVE ══
 function pushRegistros(novos) {
-  novos.forEach(n => { n._manual=true; EXTRAS.push(n); DATA.push(n); });
+  novos.forEach(n => { n._manual=true; n.t=normT(n.t); EXTRAS.push(n); DATA.push(n); });
   saveExtras();
   initSel(); render(); rTable();
   updSess();
 }
 
 // ══ SELECTS ══
+// Constrói mapa produto→família a partir dos registros que já têm fam definida,
+// depois preenche os registros sem fam (SEED legado) com a família correspondente.
+function patchFamFromExtras() {
+  const map = {};
+  DATA.forEach(d => { if(d.fam && d.p) map[d.p] = d.fam; });
+  DATA.forEach(d => { if(!d.fam && d.p && map[d.p]) d.fam = map[d.p]; });
+}
+
 function initSel() {
+  patchFamFromExtras();
   function pop(id, items, al, av) {
     const el=document.getElementById(id); if(!el) return; const cur=el.value;
     el.innerHTML=`<option value="${av}">${al}</option>`;
@@ -1678,7 +1699,7 @@ function doDeleteConfirmed(dataIdx) {
   );
   if (extrasIdx >= 0) {
     EXTRAS.splice(extrasIdx, 1);
-    DATA = [...seedFiltrado(MESES_SYNC, LOTES_EXCLUIDOS), ...EXTRAS];
+    DATA = [...seedFiltrado(MESES_SYNC, LOTES_EXCLUIDOS), ...EXTRAS.map(d=>({...d,t:normT(d.t)}))];
     saveExtras();
     initSel(); render(); rTable(); updSess();
   }
