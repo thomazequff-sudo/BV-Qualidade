@@ -1071,10 +1071,6 @@ function saveFamMap() {
   closeFamMap();
   initSel(); render(); rTable();
 }
-// Close modal on backdrop click
-document.getElementById('famMapModal').addEventListener('click', function(e){
-  if(e.target===this) closeFamMap();
-});
 
 function onFamChange() {
   const famEl=document.getElementById('sFam');
@@ -1988,7 +1984,7 @@ for(let i=0;i<5;i++) addBatchRow();
 </script>
 
 <!-- ══ MODAL MAPEAMENTO PRODUTO→FAMÍLIA ══ -->
-<div id="famMapModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center;">
+<div id="famMapModal" onclick="if(event.target===this)closeFamMap()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center;">
   <div style="background:#1e1e1e;border:1px solid #333;border-radius:12px;padding:20px;width:min(480px,95vw);max-height:80vh;display:flex;flex-direction:column;gap:12px;">
     <div style="display:flex;align-items:center;justify-content:space-between;">
       <b style="font-size:14px;color:#e0e0e0;">⚙ Mapear Produtos → Família</b>
