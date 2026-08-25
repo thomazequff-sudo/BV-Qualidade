@@ -255,6 +255,9 @@ tbody tr:hover td{background:rgba(255,255,255,.018)}
   <button class="nb" onclick="setPage('ind',this)">&#128202; Indicadores</button>
 </nav>
 
+<!-- BANNER FONTE DE DADOS -->
+<div id="dataBanner" style="display:none;padding:6px 14px;font-size:11.5px;font-weight:600;letter-spacing:.02em;text-align:center;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;"></div>
+
 <!-- DASHBOARD -->
 <div class="page on" id="page-dash">
   <div class="fbar" id="dashFbar">
@@ -808,15 +811,52 @@ async function saveToSupabase(registros, mesesSync) {
 function showSyncStatus(text) {
   const el = document.getElementById('syncMsg');
   if (el) { el.className = 'sync-msg inf'; el.textContent = text; }
+  // Mostra o banner em modo "carregando"
+  const b = document.getElementById('dataBanner');
+  if (b) { b.style.display='flex'; b.style.background='#1a3a5c'; b.style.color='#7ec8e3'; b.innerHTML='⏳ '+text; }
 }
 function hideSyncStatus() {
   const el = document.getElementById('syncMsg');
   if (el) { el.className = 'sync-msg'; el.textContent = ''; }
 }
 
+// ── Banner de fonte de dados: verde=nuvem, âmbar=cache local ──
+function showDataBanner(mode, extra) {
+  const b = document.getElementById('dataBanner');
+  if (!b) return;
+  b.style.display = 'flex';
+  if (mode === 'online') {
+    b.style.background = '#0d3321';
+    b.style.color = '#4ade80';
+    const n = extra && extra.n ? extra.n + ' registros' : '';
+    const ts = extra && extra.ts ? ' · atualizado ' + new Date(extra.ts).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+    b.innerHTML = '☁ Dados da nuvem' + (n?' · '+n:'') + ts;
+    // Persistir timestamp da última sync bem-sucedida
+    try { localStorage.setItem('bv_last_online_sync', JSON.stringify({ts: extra&&extra.ts||new Date().toISOString(), n: extra&&extra.n||0})); } catch(e){}
+  } else {
+    // modo offline/cache local
+    b.style.background = '#3d2800';
+    b.style.color = '#fbbf24';
+    let cacheInfo = '';
+    try {
+      const ls = localStorage.getItem('bv_last_online_sync');
+      if (ls) {
+        const obj = JSON.parse(ls);
+        const dt = new Date(obj.ts);
+        const agoMs = Date.now() - dt.getTime();
+        const agoH = Math.round(agoMs/3600000);
+        const agoD = Math.round(agoMs/86400000);
+        cacheInfo = ' · cache de ' + (agoD >= 1 ? agoD+'d' : agoH+'h') + ' atrás';
+      }
+    } catch(e) {}
+    b.innerHTML = '⚠ SEM CONEXÃO COM A NUVEM — dados do cache local' + cacheInfo
+      + ' &nbsp;<button onclick="location.reload()" style="background:#b45309;color:#fff;border:none;border-radius:5px;padding:2px 8px;font-size:11px;cursor:pointer;font-weight:700">🔄 Recarregar</button>';
+  }
+}
+
 // ── Carregar do Supabase ──
 async function loadFromSupabase() {
-  if (SB_MODE !== 'online') { loadFromLocalStorage(); return; }
+  if (SB_MODE !== 'online') { loadFromLocalStorage(); showDataBanner('offline'); return; }
   showSyncStatus('Carregando dados...');
   try {
     // Buscar registros
@@ -858,6 +898,10 @@ async function loadFromSupabase() {
       } catch(e) {}
     }
 
+    // Banner: dados da nuvem
+    const bannerInfo = cfgUltima ? (() => { try { return JSON.parse(cfgUltima.valor); } catch(e){ return null; } })() : null;
+    showDataBanner('online', bannerInfo || {ts: new Date().toISOString(), n: EXTRAS.length});
+
     // Cache local
     saveLocalStorage();
     hideSyncStatus();
@@ -866,6 +910,7 @@ async function loadFromSupabase() {
     console.warn('Supabase load error — usando cache local:', err);
     loadFromLocalStorage();
     hideSyncStatus();
+    showDataBanner('offline');
     initSel(); render();
   }
 }
