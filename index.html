@@ -659,24 +659,24 @@ let EXTRAS = [];
 let PROD_FAM_MAP = {}; // mapa persistente produto→família, acumula via importações
 let MESES_SYNC = new Set();
 let LOTES_EXCLUIDOS = new Set(); // "produto|lote" que o usuário optou por NÃO lançar no painel de conflito — preserva o valor original mesmo em meses sincronizados
-let DATA = SEED.map(d=>({...d,t:normT(d.t)}));
+let DATA = SEED.map(d=>({...d,t:normT(d.t),p:normP(d.p),fam:normP(d.fam||'')||undefined}));
 
 // Filtra o SEED da mesma forma em todo lugar: remove meses cobertos pelo sync,
 // EXCETO lotes que o usuário explicitamente escolheu preservar (LOTES_EXCLUIDOS)
 const chaveSeedLote = r => `${r.p}|${r.l}`;
 function seedFiltrado(mesesSync, lotesExcluidos) {
-  return SEED.filter(r => !mesesSync.has(r.mes) || lotesExcluidos.has(chaveSeedLote(r))).map(d=>({...d,t:normT(d.t)}));
+  return SEED.filter(r => !mesesSync.has(r.mes) || lotesExcluidos.has(chaveSeedLote(r))).map(d=>({...d,t:normT(d.t),p:normP(d.p),fam:normP(d.fam||'')||undefined}));
 }
 
 // ── Carregar do localStorage (fallback offline) ──
 function loadFromLocalStorage() {
-  try { const e = localStorage.getItem('bv_extras'); EXTRAS = e ? JSON.parse(e).map(d=>({...d,t:normT(d.t)})) : []; } catch(e) { EXTRAS = []; }
+  try { const e = localStorage.getItem('bv_extras'); EXTRAS = e ? JSON.parse(e).map(d=>({...d,t:normT(d.t),p:normP(d.p||''),fam:d.fam?normP(d.fam):d.fam})) : []; } catch(e) { EXTRAS = []; }
   try { const ms = localStorage.getItem('bv_meses_sync'); MESES_SYNC = ms ? new Set(JSON.parse(ms)) : new Set(); } catch(e) { MESES_SYNC = new Set(); }
   try { const le = localStorage.getItem('bv_lotes_excluidos'); LOTES_EXCLUIDOS = le ? new Set(JSON.parse(le)) : new Set(); } catch(e) { LOTES_EXCLUIDOS = new Set(); }
   try { const ie = localStorage.getItem('bv_indicadores_extras'); INDICADORES_EXTRAS = ie ? JSON.parse(ie) : []; } catch(e) { INDICADORES_EXTRAS = []; }
   try { const pfm = localStorage.getItem('bv_prod_fam_map'); PROD_FAM_MAP = pfm ? JSON.parse(pfm) : {}; } catch(e) { PROD_FAM_MAP = {}; }
   try { const io = localStorage.getItem('bv_indicadores_ocultos'); INDICADORES_MESES_OCULTOS = io ? new Set(JSON.parse(io)) : new Set(); } catch(e) { INDICADORES_MESES_OCULTOS = new Set(); }
-  DATA = [...seedFiltrado(MESES_SYNC, LOTES_EXCLUIDOS), ...EXTRAS.map(d=>({...d,t:normT(d.t)}))];
+  DATA = [...seedFiltrado(MESES_SYNC, LOTES_EXCLUIDOS), ...EXTRAS.map(d=>({...d,t:normT(d.t),p:normP(d.p||''),fam:d.fam?normP(d.fam):d.fam}))];
 }
 
 // ── Salvar no localStorage (cache local) ──
@@ -917,6 +917,13 @@ const PRODUTOS_PARAMS = {
 // Classifica um Tipo de Ensaio na sua categoria — separa Compressão/Aderência/Tempo em Aberto
 // porque têm faixas de valores e unidades completamente diferentes (MPa vs minutos).
 function categoriaOf(t) { return t||''; }
+function normP(p) {
+  if(!p) return '';
+  p = String(p).trim().replace(/\r/g,'');
+  // Normalizar capitalização de padrões conhecidos
+  p = p.replace(/\bfck\b/gi, 'FCK');
+  return p;
+}
 function normT(t) {
   if(!t) return '';
   t = t.trim();
@@ -984,7 +991,7 @@ function fd() {
 
 // ══ PUSH & SAVE ══
 function pushRegistros(novos) {
-  novos.forEach(n => { n._manual=true; n.t=normT(n.t); EXTRAS.push(n); DATA.push(n); if(n.fam && n.p) PROD_FAM_MAP[n.p] = n.fam; });
+  novos.forEach(n => { n._manual=true; n.t=normT(n.t); n.p=normP(n.p||''); if(n.fam) n.fam=normP(n.fam); EXTRAS.push(n); DATA.push(n); if(n.fam && n.p) PROD_FAM_MAP[n.p] = n.fam; });
   saveExtras();
   initSel(); render(); rTable();
   updSess();
@@ -996,9 +1003,9 @@ function pushRegistros(novos) {
 // O mapa é acumulativo: persiste no localStorage entre sessões e importações.
 function patchFamFromExtras() {
   // 1. Atualiza PROD_FAM_MAP a partir de registros atuais que têm fam
-  DATA.forEach(d => { if(d.fam && d.p) PROD_FAM_MAP[d.p] = d.fam; });
+  DATA.forEach(d => { if(d.fam && d.p) PROD_FAM_MAP[normP(d.p)] = normP(d.fam); });
   // 2. Aplica o mapa (inclui histórico de importações anteriores) a todos os registros sem fam
-  DATA.forEach(d => { if(!d.fam && d.p && PROD_FAM_MAP[d.p]) d.fam = PROD_FAM_MAP[d.p]; });
+  DATA.forEach(d => { if(!d.fam && d.p && PROD_FAM_MAP[normP(d.p)]) d.fam = PROD_FAM_MAP[normP(d.p)]; });
   // 3. Persiste o mapa atualizado
   try { localStorage.setItem('bv_prod_fam_map', JSON.stringify(PROD_FAM_MAP)); } catch(e) {}
 }
@@ -1258,7 +1265,7 @@ function doImport() {
   importedRows.forEach((row, i) => {
     const registro = String(getMapVal('mapRegistro', row)||'').trim();
     const mesRaw = getMapVal('mapMes', row);
-    const prod   = String(getMapVal('mapProd', row)||'').trim();
+    const prod   = normP(String(getMapVal('mapProd', row)||''));
     const lote   = String(getMapVal('mapLote', row)||'').trim();
     const numOf  = v => v===null||v===undefined||v==='' ? NaN : (typeof v==='number' ? v : parseFloat(String(v).replace(',','.')));
     const res    = numOf(getMapVal('mapRes', row));
@@ -1288,7 +1295,7 @@ function doImport() {
     }
     if (!mes||mes.length < 7) { erros.push(i+2); return; }
     const ml = fmtMes(mes);
-    const fam = String(getMapVal('mapFam',row)||'').trim();
+    const fam = normP(String(getMapVal('mapFam',row)||''));
     const base = {mes,ml,fam,p:prod,l:lote,id:idade,t:tipo,r:+res.toFixed(3),reg:registro||null};
 
     // Tentar preencher limites automaticamente pelo produto se não mapeados no arquivo
