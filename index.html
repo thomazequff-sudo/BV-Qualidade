@@ -662,13 +662,23 @@ let EXTRAS = [];
 let PROD_FAM_MAP = {}; // mapa persistente produto→família, acumula via importações
 let MESES_SYNC = new Set();
 let LOTES_EXCLUIDOS = new Set(); // "produto|lote" que o usuário optou por NÃO lançar no painel de conflito — preserva o valor original mesmo em meses sincronizados
-let DATA = SEED.map(d=>({...d,t:normT(d.t),p:normP(d.p),fam:normP(d.fam||'')||undefined}));
+const SEED_RENAME_P = {'AAE5':'Estrutural AAE5','AAE8':'Estrutural AAE8','AAE12':'Estrutural AAE12','AAE16':'Estrutural AAE16','AAE20':'Estrutural AAE20','AAE24':'Estrutural AAE24'};
+let DATA = SEED.map(d=>{ const p=normP(SEED_RENAME_P[d.p]||d.p); return {...d,t:normT(d.t),p,fam:undefined}; });
 
 // Filtra o SEED da mesma forma em todo lugar: remove meses cobertos pelo sync,
 // EXCETO lotes que o usuário explicitamente escolheu preservar (LOTES_EXCLUIDOS)
 const chaveSeedLote = r => `${r.p}|${r.l}`;
 function seedFiltrado(mesesSync, lotesExcluidos) {
-  return SEED.filter(r => !mesesSync.has(r.mes) || lotesExcluidos.has(chaveSeedLote(r))).map(d=>({...d,t:normT(d.t),p:normP(d.p),fam:normP(d.fam||'')||undefined}));
+  return SEED.filter(r => !mesesSync.has(r.mes) || lotesExcluidos.has(chaveSeedLote(r)))
+    .map(d => {
+      const p = normP(SEED_RENAME_P[d.p] || d.p);
+      return {
+        ...d,
+        t:   normT(d.t),
+        p:   p,
+        fam: d.fam ? normP(d.fam) : (PROD_FAM_MAP[p] || undefined)
+      };
+    });
 }
 
 // ── Carregar do localStorage (fallback offline) ──
@@ -859,33 +869,47 @@ async function loadFromSupabase() {
   if (SB_MODE !== 'online') { loadFromLocalStorage(); showDataBanner('offline'); return; }
   showSyncStatus('Carregando dados...');
   try {
-    // Buscar registros
+    // 1. Buscar registros de ensaios — falha aqui ativa o fallback completo
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?select=*&order=mes.asc&limit=10000`,
       { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }
     );
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+    if (!res.ok) throw new Error('Ensaios HTTP ' + res.status);
     const rows = await res.json();
 
-    // Buscar meses_sync + ultima_sync + lotes_excluidos
-    const res2 = await fetch(
-      `${SUPABASE_URL}/rest/v1/config?chave=in.(meses_sync,ultima_sync,lotes_excluidos)&select=chave,valor`,
-      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }
-    );
-    const cfg = await res2.json();
-    const cfgMeses      = cfg.find(c => c.chave === 'meses_sync');
-    const cfgUltima     = cfg.find(c => c.chave === 'ultima_sync');
-    const cfgExcluidos  = cfg.find(c => c.chave === 'lotes_excluidos');
-    const mesesArr = cfgMeses ? JSON.parse(cfgMeses.valor) : [];
-    const excluidosArr = cfgExcluidos ? JSON.parse(cfgExcluidos.valor) : [];
+    // 2. Buscar config (meses_sync, ultima_sync, lotes_excluidos) — falha NÃO-FATAL:
+    //    se a tabela config não existir ou retornar erro, mantemos os valores já
+    //    carregados do localStorage (passo executado em loadFromLocalStorage no boot).
+    let cfgUltima = null;
+    try {
+      const res2 = await fetch(
+        `${SUPABASE_URL}/rest/v1/config?chave=in.(meses_sync,ultima_sync,lotes_excluidos)&select=chave,valor`,
+        { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }
+      );
+      if (res2.ok) {
+        const cfg = await res2.json();
+        if (Array.isArray(cfg)) {
+          const cfgMeses     = cfg.find(c => c.chave === 'meses_sync');
+          cfgUltima          = cfg.find(c => c.chave === 'ultima_sync') || null;
+          const cfgExcluidos = cfg.find(c => c.chave === 'lotes_excluidos');
+          // Só sobrescreve se a nuvem retornou valores — caso contrário mantém o localStorage
+          if (cfgMeses)     MESES_SYNC      = new Set(JSON.parse(cfgMeses.valor));
+          if (cfgExcluidos) LOTES_EXCLUIDOS = new Set(JSON.parse(cfgExcluidos.valor));
+        }
+      } else {
+        console.warn('[BV] Config HTTP', res2.status, '— usando meses_sync/lotes_excluidos do cache local');
+      }
+    } catch(e2) {
+      console.warn('[BV] Config fetch falhou (não-fatal, usando cache local):', e2.message);
+    }
 
-    // Normalizar cada registro em passo único (try/catch por linha — 1 registro ruim não derruba toda a carga)
+    // 3. Normalizar EXTRAS em passo único (try/catch por registro)
     EXTRAS = rows.map(r => {
       try {
         const { id, id_idade, _planilha, _manual, ...rest } = r;
         return {
           ...rest,
-          id:       id_idade || 28,
+          id:        id_idade || 28,
           _planilha: !!_planilha,
           _manual:   !!_manual,
           p:   normP(rest.p  || ''),
@@ -895,12 +919,10 @@ async function loadFromSupabase() {
       } catch(e) { console.warn('[BV] Registro inválido ignorado:', e); return null; }
     }).filter(Boolean);
 
-    MESES_SYNC     = new Set(mesesArr);
-    LOTES_EXCLUIDOS = new Set(excluidosArr);
-    // EXTRAS já estão normalizados — não reaplicar normP/normT aqui
+    // EXTRAS já normalizados — não reaplicar normP/normT ao construir DATA
     DATA = [...seedFiltrado(MESES_SYNC, LOTES_EXCLUIDOS), ...EXTRAS];
 
-    // Exibir a data real da última sincronização (vinda da nuvem, vale para qualquer visitante)
+    // 4. Atualizar painel de syncStats com timestamp da última sincronização
     const statsEl = document.getElementById('syncStats');
     if (statsEl && cfgUltima) {
       try {
@@ -911,7 +933,7 @@ async function loadFromSupabase() {
       } catch(e) {}
     }
 
-    // Banner: dados da nuvem
+    // 5. Banner verde — dados da nuvem
     try {
       const bannerInfo = cfgUltima ? JSON.parse(cfgUltima.valor) : null;
       showDataBanner('online', bannerInfo || {ts: new Date().toISOString(), n: EXTRAS.length});
@@ -919,13 +941,10 @@ async function loadFromSupabase() {
       showDataBanner('online', {ts: new Date().toISOString(), n: EXTRAS.length});
     }
 
-    // Nota: não chamamos saveLocalStorage() aqui para evitar race-condition com
-    // loadIndicadoresSupabase() (que roda em paralelo) e para não sobrescrever o
-    // cache local caso um saveToSupabase() esteja em voo ao mesmo tempo.
     hideSyncStatus();
     initSel(); render();
   } catch(err) {
-    console.warn('Supabase load error — usando cache local:', err);
+    console.warn('[BV] Supabase load error — usando cache local:', err.message);
     loadFromLocalStorage();
     hideSyncStatus();
     showDataBanner('offline');
@@ -1701,7 +1720,7 @@ function doResetConfirmed(){
   localStorage.removeItem('bv_extras');
   localStorage.removeItem('bv_meses_sync');
   localStorage.removeItem('bv_lotes_excluidos');
-  EXTRAS=[]; MESES_SYNC=new Set(); LOTES_EXCLUIDOS=new Set(); DATA=SEED.map(d=>({...d,t:normT(d.t),p:normP(d.p)})); sess=[];
+  EXTRAS=[]; MESES_SYNC=new Set(); LOTES_EXCLUIDOS=new Set(); PROD_FAM_MAP={}; DATA=SEED.map(d=>{ const p=normP(SEED_RENAME_P[d.p]||d.p); return {...d,t:normT(d.t),p,fam:undefined}; }); sess=[];
   initSel(); render(); rTable(); updSess();
   saveExtras(); // também limpa a nuvem (Supabase), já que EXTRAS agora está vazio
   alert('Pronto! 843 registros originais restaurados.');
