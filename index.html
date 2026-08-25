@@ -379,6 +379,7 @@ tbody tr:hover td{background:rgba(255,255,255,.018)}
         <div class="map-grid">
           <div class="map-row"><div class="map-lbl">Registro / ID do Ensaio</div><select class="fs" id="mapRegistro" style="min-width:0"></select></div>
           <div class="map-row"><div class="map-lbl">Mês de Ensaio<span>*</span></div><select class="fs" id="mapMes" style="min-width:0"></select></div>
+          <div class="map-row"><div class="map-lbl">Família</div><select class="fs" id="mapFam" style="min-width:0"></select></div>
           <div class="map-row"><div class="map-lbl">Produto<span>*</span></div><select class="fs" id="mapProd" style="min-width:0"></select></div>
           <div class="map-row"><div class="map-lbl">Lote<span>*</span></div><select class="fs" id="mapLote" style="min-width:0"></select></div>
           <div class="map-row"><div class="map-lbl">Resultado<span>*</span></div><select class="fs" id="mapRes" style="min-width:0"></select></div>
@@ -663,7 +664,7 @@ let DATA = [...SEED];
 // EXCETO lotes que o usuário explicitamente escolheu preservar (LOTES_EXCLUIDOS)
 const chaveSeedLote = r => `${r.p}|${r.l}`;
 function seedFiltrado(mesesSync, lotesExcluidos) {
-  return SEED.filter(r => !mesesSync.has(r.mes) || lotesExcluidos.has(chaveSeedLote(r)));
+  return SEED.filter(r => !mesesSync.has(r.mes) || lotesExcluidos.has(chaveSeedLote(r))).map(d=>({...d,t:normT(d.t)}));
 }
 
 // ── Carregar do localStorage (fallback offline) ──
@@ -1166,7 +1167,8 @@ function buildPreview() {
     const lote = getMapVal('mapLote',row); const res = numOf(getMapVal('mapRes',row));
     const mn = numOf(getMapVal('mapLmin',row)); const mx = numOf(getMapVal('mapLmax',row));
     const ok = !isNaN(res)&&!isNaN(mn)&&!isNaN(mx) ? res>=mn&&res<=mx : null;
-    const vals = [reg||'—',mes,prod,lote,isNaN(res)?'':res.toFixed(3),isNaN(mn)?'':mn,isNaN(mx)?'':mx,getMapVal('mapIdade',row)||28,getMapVal('mapTipo',row)||''];
+    const fam2 = getMapVal('mapFam',row)||'—';
+    const vals = [reg||'—',mes,fam2,prod,lote,isNaN(res)?'':res.toFixed(3),isNaN(mn)?'':mn,isNaN(mx)?'':mx,getMapVal('mapIdade',row)||28,getMapVal('mapTipo',row)||''];
     html += '<tr>' + vals.map(v=>`<td style="padding:5px 10px;border-bottom:1px solid #161616;color:#aaa;white-space:nowrap">${v??''}</td>`).join('');
     html += `<td style="padding:5px 10px;border-bottom:1px solid #161616;text-align:center"><span style="font-size:10px;font-weight:700;color:${ok===null?'#555':ok?'#2ecc71':'#e74c3c'}">${ok===null?'—':ok?'✔ OK':'✗ Falha'}</span></td>`;
     html += '</tr>';
@@ -1552,7 +1554,7 @@ function doResetConfirmed(){
   localStorage.removeItem('bv_extras');
   localStorage.removeItem('bv_meses_sync');
   localStorage.removeItem('bv_lotes_excluidos');
-  EXTRAS=[]; MESES_SYNC=new Set(); LOTES_EXCLUIDOS=new Set(); DATA=[...SEED]; sess=[];
+  EXTRAS=[]; MESES_SYNC=new Set(); LOTES_EXCLUIDOS=new Set(); DATA=SEED.map(d=>({...d,t:normT(d.t)})); sess=[];
   initSel(); render(); rTable(); updSess();
   saveExtras(); // também limpa a nuvem (Supabase), já que EXTRAS agora está vazio
   alert('Pronto! 843 registros originais restaurados.');
