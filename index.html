@@ -258,7 +258,7 @@ tbody tr:hover td{background:rgba(255,255,255,.018)}
 <!-- DASHBOARD -->
 <div class="page on" id="page-dash">
   <div class="fbar" id="dashFbar">
-    <div class="fg"><div class="fl">Família</div><select class="fs" id="sFam" onchange="onFamChange()" style="min-width:160px"><option value="">Todas as famílias</option></select></div>
+    <div class="fg"><div class="fl" style="display:flex;align-items:center;gap:6px;">Família<button onclick="openFamMap()" title="Mapear produtos a famílias" style="border:none;background:none;cursor:pointer;color:var(--acc,#4ea8de);font-size:13px;padding:0;line-height:1;">⚙</button></div><select class="fs" id="sFam" onchange="onFamChange()" style="min-width:160px"><option value="">Todas as famílias</option></select></div>
     <div class="fsep"></div>
     <div class="fg"><div class="fl">Tipo de Ensaio</div><select class="fs" id="sCat" onchange="onCatChange()" style="min-width:185px"><option value="">Todos os tipos</option></select></div>
     <div class="fsep"></div>
@@ -1031,6 +1031,51 @@ function initSel() {
   if(tP){tP.innerHTML='<option value="T">Todos os produtos</option>';prods('','').forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;tP.appendChild(o);});}
   rebuildBatchSelects();
 }
+
+// ══ MAPEAMENTO PRODUTO→FAMÍLIA ══
+function openFamMap() {
+  // Build set of known families from current data + PROD_FAM_MAP
+  const famSet = new Set(Object.values(PROD_FAM_MAP));
+  DATA.forEach(d => { if(d.fam) famSet.add(d.fam); });
+  const fams = [...famSet].sort();
+  // Build product list (all unique products in DATA)
+  const allProds = [...new Set(DATA.map(d=>d.p).filter(Boolean))].sort();
+  const rows = document.getElementById('famMapRows');
+  rows.innerHTML = allProds.map(p => {
+    const cur = PROD_FAM_MAP[p] || '';
+    const opts = ['', ...fams].map(f =>
+      `<option value="${f}" ${f===cur?'selected':''}>${f||'— sem família —'}</option>`
+    ).join('');
+    return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:center;">
+      <span style="font-size:12px;color:#ccc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${p}">${p}</span>
+      <select data-prod="${p}" style="border:1px solid #444;border-radius:6px;padding:4px 6px;font-size:12px;background:#111;color:#e0e0e0;">${opts}</select>
+    </div>`;
+  }).join('');
+  document.getElementById('famMapModal').style.display='flex';
+}
+function closeFamMap() {
+  document.getElementById('famMapModal').style.display='none';
+}
+function saveFamMap() {
+  // Collect all select values
+  document.querySelectorAll('#famMapRows select[data-prod]').forEach(sel => {
+    const p = sel.getAttribute('data-prod');
+    const f = sel.value;
+    if(f) PROD_FAM_MAP[p] = f;
+    else delete PROD_FAM_MAP[p];
+  });
+  // Also add any new family typed (ignored here — it's picked via select)
+  try { localStorage.setItem('bv_prod_fam_map', JSON.stringify(PROD_FAM_MAP)); } catch(e) {}
+  // Re-apply mapping to all DATA records
+  DATA.forEach(d => { if(d.p && PROD_FAM_MAP[d.p]) d.fam = PROD_FAM_MAP[d.p]; });
+  closeFamMap();
+  initSel(); render(); rTable();
+}
+// Close modal on backdrop click
+document.getElementById('famMapModal').addEventListener('click', function(e){
+  if(e.target===this) closeFamMap();
+});
+
 function onFamChange() {
   const famEl=document.getElementById('sFam');
   const fam=famEl?famEl.value:'';
@@ -1941,5 +1986,21 @@ if (SB_MODE === 'online') { loadFromSupabase(); loadIndicadoresSupabase(); } els
 // Inicializar tabela batch com 5 linhas vazias
 for(let i=0;i<5;i++) addBatchRow();
 </script>
+
+<!-- ══ MODAL MAPEAMENTO PRODUTO→FAMÍLIA ══ -->
+<div id="famMapModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#1e1e1e;border:1px solid #333;border-radius:12px;padding:20px;width:min(480px,95vw);max-height:80vh;display:flex;flex-direction:column;gap:12px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <b style="font-size:14px;color:#e0e0e0;">⚙ Mapear Produtos → Família</b>
+      <button onclick="closeFamMap()" style="border:none;background:none;color:#aaa;font-size:18px;cursor:pointer;">✕</button>
+    </div>
+    <p style="font-size:11.5px;color:#888;margin:0;">Atribua cada produto a uma família. Esta configuração é salva permanentemente e se aplica a todos os registros, incluindo os 843 históricos.</p>
+    <div id="famMapRows" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:6px;"></div>
+    <div style="display:flex;gap:8px;margin-top:4px;">
+      <input id="famMapNewFam" placeholder="Nova família…" style="flex:1;border:1px solid #444;border-radius:6px;padding:6px 8px;font-size:12px;background:#111;color:#e0e0e0;">
+      <button onclick="saveFamMap()" style="border:none;background:#1a6ef5;color:#fff;border-radius:6px;padding:6px 16px;font-size:12px;cursor:pointer;font-weight:600;">Salvar</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
