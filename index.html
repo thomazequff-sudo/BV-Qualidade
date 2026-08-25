@@ -258,11 +258,9 @@ tbody tr:hover td{background:rgba(255,255,255,.018)}
 <!-- DASHBOARD -->
 <div class="page on" id="page-dash">
   <div class="fbar" id="dashFbar">
-    <div class="fg"><div class="fl">Categoria de Ensaio</div><select class="fs" id="sCat" onchange="onCatChange()" style="min-width:190px">
-      <option value="Compressão">Compressão</option>
-      <option value="Aderência">Aderência</option>
-      <option value="Tempo em Aberto Rápido">Tempo em Aberto Rápido</option>
-    </select></div>
+    <div class="fg"><div class="fl">Família</div><select class="fs" id="sFam" onchange="onFamChange()" style="min-width:160px"><option value="">Todas as famílias</option></select></div>
+    <div class="fsep"></div>
+    <div class="fg"><div class="fl">Tipo de Ensaio</div><select class="fs" id="sCat" onchange="onCatChange()" style="min-width:185px"><option value="">Todos os tipos</option></select></div>
     <div class="fsep"></div>
     <div class="fg"><div class="fl">Produto</div><select class="fs" id="sProd" onchange="render()"></select></div>
     <div class="fsep"></div>
@@ -914,22 +912,15 @@ const PRODUTOS_PARAMS = {
 
 // Classifica um Tipo de Ensaio na sua categoria — separa Compressão/Aderência/Tempo em Aberto
 // porque têm faixas de valores e unidades completamente diferentes (MPa vs minutos).
-function categoriaOf(t) {
-  if (!t) return 'Compressão';
-  const tl = t.toLowerCase();
-  if (tl.includes('aderência') || tl.includes('aderencia')) return 'Aderência';
-  if (tl.includes('tempo em aberto')) return 'Tempo em Aberto Rápido';
-  return 'Compressão';
-}
-const unidadeOf = cat => cat === 'Tempo em Aberto Rápido' ? 'min' : 'MPa';
+function categoriaOf(t) { return t||''; }
+const unidadeOf = t => {
+  if(!t) return 'MPa';
+  const m=t.match(/\((\w+)\)$/); return m?m[1]:'MPa';
+};
 
 const uniq = (arr, fn) => [...new Set(arr.map(fn))].sort();
-const prods = (cat) => {
-  const doData = DATA.filter(d => !cat || categoriaOf(d.t) === cat).map(d => d.p);
-  const doCatalogo = Object.entries(PRODUTOS_PARAMS)
-    .filter(([,pp]) => !cat || categoriaOf(pp.ensaio) === cat)
-    .map(([nome]) => nome);
-  return [...new Set([...doData, ...doCatalogo])].sort();
+const prods = (fam, cat) => {
+  return [...new Set(DATA.filter(d=>(!fam||d.fam===fam)&&(!cat||d.t===cat)).map(d=>d.p))].sort();
 };
 const mesList = () => uniq(DATA, d => d.mes);
 const anosList = () => uniq(DATA, d => d.mes.slice(0,4));
@@ -954,7 +945,9 @@ const loteNoSeedOriginal = (p, l) => SEED.some(r => r.p === p && r.l === l);
 
 function getF() {
   const anoEl = document.getElementById('sAno');
+  const famEl = document.getElementById('sFam');
   return {
+    fam: famEl ? famEl.value : '',
     cat: document.getElementById('sCat').value,
     p: document.getElementById('sProd').value,
     meses: getSelectedMeses(),
@@ -962,9 +955,10 @@ function getF() {
   };
 }
 function fd() {
-  const {cat,p,meses,a} = getF();
+  const {fam,cat,p,meses,a} = getF();
   return DATA.filter(d=>
-    categoriaOf(d.t) === cat &&
+    (!fam||d.fam===fam) &&
+    (!cat||d.t===cat) &&
     (p==='T'||d.p===p) &&
     (a==='T'||d.mes.startsWith(a)) &&
     (meses.length===0||meses.includes(d.mes))
@@ -982,25 +976,46 @@ function pushRegistros(novos) {
 // ══ SELECTS ══
 function initSel() {
   function pop(id, items, al, av) {
-    const el = document.getElementById(id); const cur = el.value;
-    el.innerHTML = `<option value="${av}">${al}</option>`;
-    items.forEach(v => { const o=document.createElement('option'); o.value=v; o.textContent=v; el.appendChild(o); });
-    if ([...el.options].some(o=>o.value===cur)) el.value=cur;
+    const el=document.getElementById(id); if(!el) return; const cur=el.value;
+    el.innerHTML=`<option value="${av}">${al}</option>`;
+    items.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;el.appendChild(o);});
+    if([...el.options].some(o=>o.value===cur)) el.value=cur;
   }
-  pop('sProd',prods(document.getElementById('sCat').value),'Todos os produtos','T');
+  const famEl=document.getElementById('sFam');
+  const curFam=famEl?famEl.value:'';
+  // Populate families
+  const fams=[...new Set(DATA.map(d=>d.fam).filter(Boolean))].sort();
+  pop('sFam',fams,'Todas as famílias','');
+  if(famEl&&fams.includes(curFam)) famEl.value=curFam;
+  // Populate test types based on family
+  const cats=[...new Set(DATA.filter(d=>!curFam||d.fam===curFam).map(d=>d.t).filter(Boolean))].sort();
+  pop('sCat',cats,'Todos os tipos','');
+  const curCat=document.getElementById('sCat').value;
+  // Populate products
+  pop('sProd',prods(curFam,curCat),'Todos os produtos','T');
   pop('sAno',anosList(),'Todos os anos','T');
-  // Popular multi-select de meses
   buildMsItems();
   const fP=document.getElementById('fP');
-  fP.innerHTML='<option value="">— selecione —</option>';
-  prods().forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;fP.appendChild(o);});
+  if(fP){fP.innerHTML='<option value="">— selecione —</option>';prods('','').forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;fP.appendChild(o);});}
   const tP=document.getElementById('tP');
-  tP.innerHTML='<option value="T">Todos os produtos</option>';
-  prods(document.getElementById('tCat') ? document.getElementById('tCat').value : null).forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;tP.appendChild(o);});
+  if(tP){tP.innerHTML='<option value="T">Todos os produtos</option>';prods('','').forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;tP.appendChild(o);});}
   rebuildBatchSelects();
 }
+function onFamChange() {
+  const famEl=document.getElementById('sFam');
+  const fam=famEl?famEl.value:'';
+  const cats=[...new Set(DATA.filter(d=>!fam||d.fam===fam).map(d=>d.t).filter(Boolean))].sort();
+  const sCat=document.getElementById('sCat');
+  sCat.innerHTML='<option value="">Todos os tipos</option>'+cats.map(t=>`<option value="${t}">${t}</option>`).join('');
+  onCatChange();
+}
 function onCatChange() {
-  initSel();
+  const famEl=document.getElementById('sFam');
+  const fam=famEl?famEl.value:'';
+  const cat=document.getElementById('sCat').value;
+  const ps=prods(fam,cat);
+  const sProd=document.getElementById('sProd');
+  sProd.innerHTML='<option value="T">Todos os produtos</option>'+ps.map(p=>`<option value="${p}">${p}</option>`).join('');
   render();
 }
 
@@ -1010,7 +1025,9 @@ const dc=id=>{if(charts[id]){charts[id].destroy();delete charts[id];}};
 const GC={grid:'rgba(255,255,255,.055)',tick:'#555'};
 
 function render() {
-  const data=fd(); const {p,cat}=getF(); const un=unidadeOf(cat);
+  const data=fd(); const {p,cat}=getF();
+  const firstT=data.length?data[0].t:cat;
+  const un=unidadeOf(firstT||cat);
   const n=data.length,a=data.filter(d=>d.ok).length;
   const rLow=data.filter(d=>statusOf(d)==='low').length;
   const rHigh=data.filter(d=>statusOf(d)==='high').length;
@@ -1110,6 +1127,7 @@ function buildMapSelects(cols) {
   const autoMap = {
     mapRegistro: ['registro','id do ensaio','id ensaio','id_ensaio','nº registro','numero registro','num registro'],
     mapMes:   ['mês','mes','month','data','date'],
+    mapFam:   ['família','familia','family','fam'],
     mapProd:  ['produto','product','prod'],
     mapLote:  ['lote','lot','batch'],
     mapRes:   ['resultado','result','resistencia','resistência','valor','value','mpa'],
@@ -1137,8 +1155,8 @@ function buildPreview() {
   const preview = document.getElementById('importPreview');
   preview.style.display = 'block';
   const sample = importedRows.slice(0,5);
-  const fields = ['Registro','Mês','Produto','Lote','Resultado','Lim.Min','Lim.Max','Idade','Tipo'];
-  const ids = ['mapRegistro','mapMes','mapProd','mapLote','mapRes','mapLmin','mapLmax','mapIdade','mapTipo'];
+  const fields = ['Registro','Mês','Família','Produto','Lote','Resultado','Lim.Min','Lim.Max','Idade','Tipo'];
+  const ids = ['mapRegistro','mapMes','mapFam','mapProd','mapLote','mapRes','mapLmin','mapLmax','mapIdade','mapTipo'];
   let html = '<table style="width:100%;border-collapse:collapse;font-size:11px">';
   html += '<thead><tr>' + fields.map(f=>`<th style="background:#111;padding:6px 10px;text-align:left;color:#777;white-space:nowrap">${f}</th>`).join('') + '<th style="background:#111;padding:6px 10px;color:#777">Status</th></tr></thead><tbody>';
   sample.forEach(row => {
@@ -1198,7 +1216,8 @@ function doImport() {
     }
     if (!mes||mes.length < 7) { erros.push(i+2); return; }
     const ml = fmtMes(mes);
-    const base = {mes,ml,p:prod,l:lote,id:idade,t:tipo,r:+res.toFixed(3),reg:registro||null};
+    const fam = String(getMapVal('mapFam',row)||'').trim();
+    const base = {mes,ml,fam,p:prod,l:lote,id:idade,t:tipo,r:+res.toFixed(3),reg:registro||null};
 
     // Tentar preencher limites automaticamente pelo produto se não mapeados no arquivo
     if (isNaN(mn) || isNaN(mx)) {
@@ -1318,19 +1337,19 @@ function commitImport(unicos, duplicados, erros) {
     document.getElementById('mapSection').style.display='none';
     return;
   }
-  // Auto-switch categoria para mostrar os registros importados imediatamente
-  const catImportada = unicos.length ? categoriaOf(unicos[0].t) : null;
-  const todosMesmaCategoria = catImportada && unicos.every(u => categoriaOf(u.t) === catImportada);
+  // Auto-switch para mostrar os registros importados imediatamente
+  const catImportada = unicos.length ? unicos[0].t : null;
+  const famImportada = unicos.length ? unicos[0].fam : null;
+  const todosMesmaCategoria = catImportada && unicos.every(u => u.t === catImportada);
   const sCatEl = document.getElementById('sCat');
-  if (todosMesmaCategoria && sCatEl && sCatEl.value !== catImportada) {
-    sCatEl.value = catImportada;
-  }
+  const sFamEl = document.getElementById('sFam');
+  if(famImportada && sFamEl) sFamEl.value = famImportada;
+  if(todosMesmaCategoria && sCatEl && sCatEl.value !== catImportada) sCatEl.value = catImportada;
 
   pushRegistros(unicos);
   sess = [...unicos.slice().reverse(), ...sess];
 
-  const catMsg = todosMesmaCategoria && catImportada !== 'Compressão'
-    ? ` — categoria alterada para "${catImportada}"` : '';
+  const catMsg = '';
   msg.className='import-msg ok';
   msg.textContent='✔ '+unicos.length+' registros importados!'
     + (duplicados ? ' ('+duplicados+' duplicados ignorados)' : '')
