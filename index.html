@@ -1396,14 +1396,24 @@ function doImport() {
       mes = mesRaw.toISOString().slice(0,7);
     } else {
       const s = String(mesRaw).trim();
-      // Tentar yyyy-mm, dd/mm/yyyy, mm/yyyy, etc.
+      // Tentar yyyy-mm, dd/mm/yyyy, mm/yyyy, Mmm/YYYY, mmm/YY, etc.
       let m = s.match(/^(\d{4})[-\/](\d{1,2})/);
       if (m) mes = `${m[1]}-${m[2].padStart(2,'0')}`;
       else { m = s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);
         if (m) mes = `${m[3]}-${m[2].padStart(2,'0')}`;
         else { m = s.match(/^(\d{1,2})[-\/](\d{4})/);
           if (m) mes = `${m[2]}-${m[1].padStart(2,'0')}`;
-          else mes = s.slice(0,7); }
+          else {
+            // Mmm/YYYY ou mmm/YY — ex: Apr/2025, jan/26, Jul/2025
+            m = s.match(/^([A-Za-z]{3,4})[\/\-](\d{2,4})$/);
+            if (m) {
+              const MN={jan:1,fev:2,feb:2,mar:3,abr:4,apr:4,mai:5,may:5,jun:6,jul:7,ago:8,aug:8,set:9,sep:9,out:10,oct:10,nov:11,dez:12,dec:12};
+              const num = MN[m[1].toLowerCase().slice(0,3)];
+              if (num) { const yr=m[2].length===2?(+m[2]>50?'19'+m[2]:'20'+m[2]):m[2]; mes=`${yr}-${String(num).padStart(2,'0')}`; }
+              else mes = s.slice(0,7);
+            } else mes = s.slice(0,7);
+          }
+        }
       }
     }
     if (!mes||mes.length < 7) { erros.push(i+2); return; }
