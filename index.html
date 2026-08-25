@@ -842,7 +842,7 @@ async function loadFromSupabase() {
     EXTRAS = rows.map(r => {
       const { id, id_idade, _planilha, _manual, ...rest } = r;
       return { ...rest, id: id_idade || 28, _planilha: !!_planilha, _manual: !!_manual };
-    });
+    }).map(d => ({...d, p: normP(d.p||''), t: normT(d.t||''), fam: d.fam ? normP(d.fam) : d.fam}));
     MESES_SYNC = new Set(mesesArr);
     LOTES_EXCLUIDOS = new Set(excluidosArr);
     DATA = [...seedFiltrado(MESES_SYNC, LOTES_EXCLUIDOS), ...EXTRAS.map(d=>({...d,t:normT(d.t),p:normP(d.p||''),fam:d.fam?normP(d.fam):d.fam}))];
@@ -919,7 +919,14 @@ const PRODUTOS_PARAMS = {
 function categoriaOf(t) { return t||''; }
 function normP(p) {
   if(!p) return '';
-  p = String(p).trim().replace(/\r/g,'');
+  p = String(p);
+  // Remove carriage return and invisible unicode chars (use JS unicode escapes)
+  p = p.replace(/[\r\u00a0\u200b\u200c\u200d\ufeff\u00ad]/g, ' ');
+  // Unicode NFC normalization (combining accents)
+  if(p.normalize) p = p.normalize('NFC');
+  p = p.trim();
+  // Collapse multiple internal spaces
+  p = p.replace(/  +/g, ' ');
   // Normalizar capitalização de padrões conhecidos
   p = p.replace(/\bfck\b/gi, 'FCK');
   return p;
