@@ -945,6 +945,8 @@ async function loadFromSupabase() {
 
     // EXTRAS já normalizados — não reaplicar normP/normT ao construir DATA
     DATA = [...seedFiltrado(MESES_SYNC, LOTES_EXCLUIDOS), ...EXTRAS];
+    // Sincronizar localStorage com Supabase para evitar resíduo de importações anteriores
+    try { localStorage.setItem('bv_extras', JSON.stringify(EXTRAS)); } catch(e) {}
 
     // 4. Atualizar painel de syncStats com timestamp da última sincronização
     const statsEl = document.getElementById('syncStats');
