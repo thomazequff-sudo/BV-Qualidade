@@ -683,7 +683,7 @@ function seedFiltrado(mesesSync, lotesExcluidos) {
 
 // ── Carregar do localStorage (fallback offline) ──
 function loadFromLocalStorage() {
-  try { const e = localStorage.getItem('bv_extras'); EXTRAS = e ? JSON.parse(e).map(d=>({...d,t:normT(d.t),p:normP(d.p||''),fam:d.fam?normP(d.fam):d.fam})) : []; } catch(e) { EXTRAS = []; }
+  try { const e = localStorage.getItem('bv_extras'); EXTRAS = e ? JSON.parse(e).map(d=>{ const pNorm=normP(d.p||''); const p=SEED_RENAME_P[pNorm]?normP(SEED_RENAME_P[pNorm]):pNorm; return {...d,t:normT(d.t),p,fam:d.fam?normP(d.fam):d.fam}; }) : []; } catch(e) { EXTRAS = []; }
   try { const ms = localStorage.getItem('bv_meses_sync'); MESES_SYNC = ms ? new Set(JSON.parse(ms)) : new Set(); } catch(e) { MESES_SYNC = new Set(); }
   try { const le = localStorage.getItem('bv_lotes_excluidos'); LOTES_EXCLUIDOS = le ? new Set(JSON.parse(le)) : new Set(); } catch(e) { LOTES_EXCLUIDOS = new Set(); }
   try { const ie = localStorage.getItem('bv_indicadores_extras'); INDICADORES_EXTRAS = ie ? JSON.parse(ie) : []; } catch(e) { INDICADORES_EXTRAS = []; }
@@ -907,12 +907,14 @@ async function loadFromSupabase() {
     EXTRAS = rows.map(r => {
       try {
         const { id, id_idade, _planilha, _manual, ...rest } = r;
+        const pNorm = normP(rest.p || '');
+        const p = SEED_RENAME_P[pNorm] ? normP(SEED_RENAME_P[pNorm]) : pNorm;
         return {
           ...rest,
           id:        id_idade || 28,
           _planilha: !!_planilha,
           _manual:   !!_manual,
-          p:   normP(rest.p  || ''),
+          p,
           t:   normT(rest.t  || ''),
           fam: rest.fam ? normP(rest.fam) : rest.fam
         };
