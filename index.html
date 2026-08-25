@@ -1504,7 +1504,7 @@ function finalizarImport(novos, erros) {
   // Remover duplicatas: se o registro trouxer "Registro" (ID único do ensaio), usa ele como
   // chave principal — evita falso-positivo quando o mesmo lote é ensaiado mais de uma vez.
   // Sem "Registro" mapeado, cai no fallback mês+produto+lote+idade+resultado.
-  const chaveOf = r => r.reg ? `REG:${r.reg}` : `${r.mes}|${r.p}|${r.l}|${r.id}|${r.r}`;
+  const chaveOf = r => r.reg ? `REG:${r.reg}|${r.t||''}` : `${r.mes}|${r.p}|${r.l}|${r.id}|${r.t}|${r.r}`;
   const chavesExistentes = new Set(DATA.map(chaveOf));
   const unicos = []; let duplicados = 0;
   novos.forEach(n => {
