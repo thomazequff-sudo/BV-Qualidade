@@ -845,7 +845,7 @@ async function loadFromSupabase() {
     });
     MESES_SYNC = new Set(mesesArr);
     LOTES_EXCLUIDOS = new Set(excluidosArr);
-    DATA = [...seedFiltrado(MESES_SYNC, LOTES_EXCLUIDOS), ...EXTRAS.map(d=>({...d,t:normT(d.t)}))];
+    DATA = [...seedFiltrado(MESES_SYNC, LOTES_EXCLUIDOS), ...EXTRAS.map(d=>({...d,t:normT(d.t),p:normP(d.p||''),fam:d.fam?normP(d.fam):d.fam}))];
 
     // Exibir a data real da última sincronização (vinda da nuvem, vale para qualquer visitante)
     const statsEl = document.getElementById('syncStats');
@@ -1631,7 +1631,7 @@ function doResetConfirmed(){
   localStorage.removeItem('bv_extras');
   localStorage.removeItem('bv_meses_sync');
   localStorage.removeItem('bv_lotes_excluidos');
-  EXTRAS=[]; MESES_SYNC=new Set(); LOTES_EXCLUIDOS=new Set(); DATA=SEED.map(d=>({...d,t:normT(d.t)})); sess=[];
+  EXTRAS=[]; MESES_SYNC=new Set(); LOTES_EXCLUIDOS=new Set(); DATA=SEED.map(d=>({...d,t:normT(d.t),p:normP(d.p)})); sess=[];
   initSel(); render(); rTable(); updSess();
   saveExtras(); // também limpa a nuvem (Supabase), já que EXTRAS agora está vazio
   alert('Pronto! 843 registros originais restaurados.');
@@ -1754,7 +1754,7 @@ function doDeleteConfirmed(dataIdx) {
   );
   if (extrasIdx >= 0) {
     EXTRAS.splice(extrasIdx, 1);
-    DATA = [...seedFiltrado(MESES_SYNC, LOTES_EXCLUIDOS), ...EXTRAS.map(d=>({...d,t:normT(d.t)}))];
+    DATA = [...seedFiltrado(MESES_SYNC, LOTES_EXCLUIDOS), ...EXTRAS.map(d=>({...d,t:normT(d.t),p:normP(d.p||''),fam:d.fam?normP(d.fam):d.fam}))];
     saveExtras();
     initSel(); render(); rTable(); updSess();
   }
