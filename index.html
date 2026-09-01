@@ -916,7 +916,9 @@ function categoriaOf(t) {
   if (!t) return 'Compressão';
   const tl = t.toLowerCase();
   if (tl.includes('aderência') || tl.includes('aderencia')) return 'Aderência';
-  if (tl.includes('tempo em aberto')) return 'Tempo em Aberto Rápido';
+  // Reconhece tanto o nome por extenso ("Tempo em Aberto Rápido") quanto a forma
+  // abreviada real vinda do app Bela Vista ("T. Ab. Rápido (min)")
+  if (tl.includes('tempo em aberto') || tl.includes('t. ab') || tl.includes('rápido') || tl.includes('rapido')) return 'Tempo em Aberto Rápido';
   return 'Compressão';
 }
 const unidadeOf = cat => cat === 'Tempo em Aberto Rápido' ? 'min' : 'MPa';
@@ -945,6 +947,23 @@ const limitsOf = p => {
   if (PRODUTOS_PARAMS[p]) return {mn: PRODUTOS_PARAMS[p].mn, mx: PRODUTOS_PARAMS[p].mx};
   return null;
 };
+
+// Alguns exports do app Bela Vista trazem o produto com prefixo extra (ex: "Estrutural AAE12"
+// em vez de "AAE12"). Normaliza removendo o prefixo SOMENTE quando o nome sem ele já existe
+// como produto conhecido — evita misturar errado caso seja de fato outro produto.
+const PREFIXOS_CONHECIDOS = ['Estrutural '];
+function normalizarProduto(nome) {
+  if (!nome) return nome;
+  const limpo = String(nome).trim();
+  for (const pre of PREFIXOS_CONHECIDOS) {
+    if (limpo.toLowerCase().startsWith(pre.toLowerCase())) {
+      const semPrefixo = limpo.slice(pre.length).trim();
+      const conhecidos = new Set([...DATA.map(d=>d.p), ...Object.keys(PRODUTOS_PARAMS)]);
+      if (conhecidos.has(semPrefixo)) return semPrefixo;
+    }
+  }
+  return limpo;
+}
 
 // Detecta se produto+lote já existe nos 843 registros originais (que nunca têm Registro).
 // Usado para avisar sobre possível reprocessamento/replicação do mesmo ensaio, sem bloquear a operação.
@@ -1142,7 +1161,7 @@ function buildPreview() {
   sample.forEach(row => {
     const reg = getMapVal('mapRegistro',row);
     const numOf = v => v===null||v===undefined||v==='' ? NaN : (typeof v==='number' ? v : parseFloat(String(v).replace(',','.')));
-    const mes = getMapVal('mapMes',row); const prod = getMapVal('mapProd',row);
+    const mes = getMapVal('mapMes',row); const prod = normalizarProduto(getMapVal('mapProd',row));
     const lote = getMapVal('mapLote',row); const res = numOf(getMapVal('mapRes',row));
     const mn = numOf(getMapVal('mapLmin',row)); const mx = numOf(getMapVal('mapLmax',row));
     const ok = !isNaN(res)&&!isNaN(mn)&&!isNaN(mx) ? res>=mn&&res<=mx : null;
@@ -1166,7 +1185,7 @@ function doImport() {
   importedRows.forEach((row, i) => {
     const registro = String(getMapVal('mapRegistro', row)||'').trim();
     const mesRaw = getMapVal('mapMes', row);
-    const prod   = String(getMapVal('mapProd', row)||'').trim();
+    const prod   = normalizarProduto(String(getMapVal('mapProd', row)||'').trim());
     const lote   = String(getMapVal('mapLote', row)||'').trim();
     const numOf  = v => v===null||v===undefined||v==='' ? NaN : (typeof v==='number' ? v : parseFloat(String(v).replace(',','.')));
     const res    = numOf(getMapVal('mapRes', row));
