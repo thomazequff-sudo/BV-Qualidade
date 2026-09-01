@@ -534,9 +534,9 @@ tbody tr:hover td{background:rgba(255,255,255,.018)}
 
 <div class="page" id="page-ind">
   <div class="kpis">
-    <div class="kpi cb"><div class="kl">Total Lotes Produzidos</div><div class="kv" id="indKLotes">—</div><div class="ks">acumulado</div></div>
-    <div class="kpi cg"><div class="kl">Total Ensaios Realizados</div><div class="kv" id="indKEnsaios">—</div><div class="ks">acumulado</div></div>
-    <div class="kpi ca" style="border-top-color:var(--blu2)"><div class="kl">% Ensaios Realizados</div><div class="kv" id="indKPct" style="color:var(--blu2)">—</div><div class="ks">média geral</div></div>
+    <div class="kpi cb"><div class="kl">Total Lotes Produzidos</div><div class="kv" id="indKLotes">—</div><div class="ks">meses marcados no gráfico</div></div>
+    <div class="kpi cg"><div class="kl">Total Ensaios Realizados</div><div class="kv" id="indKEnsaios">—</div><div class="ks">meses marcados no gráfico</div></div>
+    <div class="kpi ca" style="border-top-color:var(--blu2)"><div class="kl">% Ensaios Realizados</div><div class="kv" id="indKPct" style="color:var(--blu2)">—</div><div class="ks">meses marcados no gráfico</div></div>
   </div>
 
   <div class="cb2 mb">
@@ -1892,16 +1892,21 @@ function renderIndicadores() {
     .sort((a,b)=>a.mes.localeCompare(b.mes));
   const cntEl = document.getElementById('indCnt');
   if (cntEl) cntEl.textContent = todos.length + ' meses';
+
+  // Totais e gráfico consideram só os meses marcados (visíveis) — desmarcar um mês
+  // o tira tanto do gráfico quanto da soma de cima.
+  const visiveis = todos.filter(r => !INDICADORES_MESES_OCULTOS.has(r.mes));
   let totalLotes=0, totalEnsaios=0;
+  visiveis.forEach(r => { totalLotes += r.lotes; totalEnsaios += r.ensaios; });
+
   const body = todos.map(r => {
-    totalLotes += r.lotes; totalEnsaios += r.ensaios;
     const pct = r.lotes > 0 ? (r.ensaios/r.lotes*100) : 0;
     const ml = fmtMes(r.mes);
     const delBtn = r._extra
       ? `<button class="btn-del" onclick="askDeleteIndicador('${r.mes}')" title="Excluir">✕</button>`
       : `<span title="Dado original — não pode ser excluído" style="color:var(--gy3);font-size:11px;padding:2px 7px">🔒</span>`;
     const visivel = !INDICADORES_MESES_OCULTOS.has(r.mes);
-    const chk = `<input type="checkbox" ${visivel?'checked':''} onchange="toggleMesGrafico('${r.mes}')" title="Mostrar/ocultar este mês no gráfico">`;
+    const chk = `<input type="checkbox" ${visivel?'checked':''} onchange="toggleMesGrafico('${r.mes}')" title="Incluir/excluir este mês do gráfico e dos totais">`;
     return `<tr${visivel?'':' style="opacity:.45"'}><td>${ml}</td><td>${r.lotes}</td><td>${r.ensaios}</td><td>${pct.toFixed(1)}%</td><td style="text-align:center">${chk}</td><td style="text-align:center">${delBtn}</td></tr>`;
   }).join('');
   const bodyEl = document.getElementById('indBody');
@@ -1914,7 +1919,6 @@ function renderIndicadores() {
 
   if (!document.getElementById('cInd')) return; // gráfico só existe quando a página já renderizou
   dc('ind');
-  const visiveis = todos.filter(r => !INDICADORES_MESES_OCULTOS.has(r.mes));
   const labels = visiveis.map(r=>fmtMes(r.mes));
   const pcts = visiveis.map(r => r.lotes > 0 ? +(r.ensaios/r.lotes*100).toFixed(1) : 0);
   charts['ind'] = new Chart(document.getElementById('cInd'), {
